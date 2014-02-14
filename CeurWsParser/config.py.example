@@ -1,3 +1,5 @@
+#Rename config.py.example to config.py
+
 sparqlstore = dict(
     url = "", #OpenRDF Sesame URL
     repository = "", #a repository name
