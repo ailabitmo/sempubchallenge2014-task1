@@ -7,6 +7,7 @@ from grab import Grab
 import re
 import rdflib
 import urllib
+import config
 from rdflib.plugins.stores import sparqlstore
 
 swrc = rdflib.Namespace("http://swrc.ontoware.org/ontology#")
@@ -52,11 +53,9 @@ def parse_workshop_summary(repo, tr):
 class CEURSpider(Spider):
 
     def prepare(self):
-        #Для доступа к Sesame нужен VPN, пока оставлю закоменченным
-        #store = sparqlstore.SPARQLUpdateStore(queryEndpoint = "http://192.168.134.110:8080/openrdf-sesame/repositories/sempubchallenge-max",
-        #            update_endpoint = "http://192.168.134.110:8080/openrdf-sesame/repositories/sempubchallenge-max/statements")
-        #graph = rdflib.Graph(store, identifier="http://ailab.ifmo.ru/context/sempubchallenge")
-        graph = rdflib.Graph()
+        store = sparqlstore.SPARQLUpdateStore(queryEndpoint = config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'],
+                    update_endpoint = config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'] + "/statements", context_aware = False)
+        graph = rdflib.Graph(store)
         self.repo = graph
 
     def task_initial(self, grab, task):
@@ -67,10 +66,11 @@ class CEURSpider(Spider):
             print "Parsing .pdf file " + task.url
         elif 'Vol' in task.url:
             #parse a workshop
-            print "Parsing a workshop"
+            print "Parsing a workshop " + task.url
             #yield Task('workshop', url = task.url)
         else:
             #parse the index page
+            print "Parsing the index page..."
             tr = grab.tree.xpath('/html/body/table[last()]/tr[td]')
             for i in range(0, len(tr) / 2, 2):
                 parse_workshop_summary(self.repo, [tr[i], tr[i+1]])
@@ -86,63 +86,6 @@ class CEURSpider(Spider):
             parse_workshop_publication(task.url, node)
 
 def main():
-    initial_urls = ["http://ceur-ws.org/Vol-1"]
-    full_initial_urls = ["http://ceur-ws.org/",
-                    "http://ceur-ws.org/Vol-315/paper8.pdf",
-                    "http://ceur-ws.org/Vol-1085/",
-                    "http://ceur-ws.org/Vol-1081/",
-                    "http://ceur-ws.org/Vol-1044/",
-                    "http://ceur-ws.org/Vol-1019/",
-                    "http://ceur-ws.org/Vol-1008/",
-                    "http://ceur-ws.org/Vol-996/",
-                    "http://ceur-ws.org/Vol-994/",
-                    "http://ceur-ws.org/Vol-981/",
-                    "http://ceur-ws.org/Vol-979/",
-                    "http://ceur-ws.org/Vol-951/",
-                    "http://ceur-ws.org/Vol-946/",
-                    "http://ceur-ws.org/Vol-943/",
-                    "http://ceur-ws.org/Vol-937/",
-                    "http://ceur-ws.org/Vol-936/",
-                    "http://ceur-ws.org/Vol-930/",
-                    "http://ceur-ws.org/Vol-929/",
-                    "http://ceur-ws.org/Vol-919/",
-                    "http://ceur-ws.org/Vol-914/",
-                    "http://ceur-ws.org/Vol-906/",
-                    "http://ceur-ws.org/Vol-905/",
-                    "http://ceur-ws.org/Vol-904/",
-                    "http://ceur-ws.org/Vol-903/",
-                    "http://ceur-ws.org/Vol-902/",
-                    "http://ceur-ws.org/Vol-901/",
-                    "http://ceur-ws.org/Vol-900/",
-                    "http://ceur-ws.org/Vol-895/",
-                    "http://ceur-ws.org/Vol-890/",
-                    "http://ceur-ws.org/Vol-875/",
-                    "http://ceur-ws.org/Vol-869/",
-                    "http://ceur-ws.org/Vol-859/",
-                    "http://ceur-ws.org/Vol-840/",
-                    "http://ceur-ws.org/Vol-839/",
-                    "http://ceur-ws.org/Vol-838/",
-                    "http://ceur-ws.org/Vol-814/",
-                    "http://ceur-ws.org/Vol-813/",
-                    "http://ceur-ws.org/Vol-800/",
-                    "http://ceur-ws.org/Vol-798/",
-                    "http://ceur-ws.org/Vol-784/",
-                    "http://ceur-ws.org/Vol-783/",
-                    "http://ceur-ws.org/Vol-782/",
-                    "http://ceur-ws.org/Vol-779/",
-                    "http://ceur-ws.org/Vol-778/",
-                    "http://ceur-ws.org/Vol-775/",
-                    "http://ceur-ws.org/Vol-736/",
-                    "http://ceur-ws.org/Vol-721/",
-                    "http://ceur-ws.org/Vol-671/",
-                    "http://ceur-ws.org/Vol-669/",
-                    "http://ceur-ws.org/Vol-658/",
-                    "http://ceur-ws.org/Vol-628/",
-                    "http://ceur-ws.org/Vol-538/",
-                    "http://ceur-ws.org/Vol-369/",
-                    "http://ceur-ws.org/Vol-315/",
-                    "http://ceur-ws.org/Vol-232/",
-                    "http://ceur-ws.org/Vol-1/"]
 
     threads = 5
     default_logging(grab_log="log.txt")
@@ -151,7 +94,7 @@ def main():
     flval = open("outval.txt","w")
 
     bot = CEURSpider(thread_number=threads, network_try_limit = 2)
-    bot.initial_urls = initial_urls
+    bot.initial_urls = config.input_urls
     bot.out = fl
     bot.validate = flval;
     try: bot.run()
