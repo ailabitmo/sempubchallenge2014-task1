@@ -6,11 +6,12 @@ from grab.tools.logs import default_logging
 from grab import Grab
 import re
 import rdflib
+from rdflib.namespace import FOAF, RDF, RDFS
 import urllib
 import config
 from rdflib.plugins.stores import sparqlstore
 
-swrc = rdflib.Namespace("http://swrc.ontoware.org/ontology#")
+SWRC = rdflib.Namespace("http://swrc.ontoware.org/ontology#")
 
 def parse_workshop_publication( workshop, node):
     link = node.find("a")
@@ -34,27 +35,38 @@ def format_str(text):
     text=' '.join(text.split())
     return text
 
-def parse_workshop_summary(repo, tr):
-    link = tr[0].find('.//td[last()]//a[@href]')
-    proceedings = rdflib.URIRef(link.get('href'))
-    repo.add((proceedings, rdflib.RDF.type, swrc.Proceedings))
+def toid(string):
+    return re.sub(r'\s*', '_', string)
 
-    summary = tr[1].find('.//td[last()]').text_content()
-    m = re.match(r"(.*)(\nEdited\s*by\s*:\s*)(.*)(\nSubmitted\s*by\s*:\s*)(.*)(\nPublished\s*on\s*CEUR-WS:\s*)(.*)(\nONLINE)(.*)", summary, re.I | re.M | re.S)
-    extended_title = urllib.quote(m.group(1).encode('utf-8'))
-    repo.add((proceedings, rdflib.RDFS.label, rdflib.Literal(extended_title)))
+def parse_workshop_summary(repo, tr):
+    #Parsing the page
+    link = tr[0].find('.//td[last()]//a[@href]') #link(<a>) to workshop
+    summary = tr[1].find('.//td[last()]').text_content() #desription of workshop (title, editors, etc.)
+    m = re.match(r"(.*)(\nEdited\s*by\s*:\s*)(.*)(\nSubmitted\s*by\s*:\s*)(.*)(\nPublished\s*on\s*CEUR-WS:\s*)(.*)(\nONLINE)(.*)", 
+                    summary, re.I | re.M | re.S)
+    extended_title = m.group(1) #title of workshop
+    print extended_title
     editors = re.split(r",{1}\s*", m.group(3))
-    #print editors
+    print editors
     submitters = m.group(5)
-    #print submitters
     submittion_date = m.group(7)
-    #print submittion_date
+
+    #Saving RDF to the repo
+    proceedings = rdflib.URIRef(link.get('href'))
+    repo.add((proceedings, RDF.type, SWRC.Proceedings))
+    repo.add((proceedings, RDFS.label, rdflib.Literal(extended_title)))
+    for editor in editors:
+        agent = rdflib.URIRef(config.dataset['base'] + toid(editor))
+        repo.add((agent, RDF.type, FOAF.Agent))
 
 class CEURSpider(Spider):
 
     def prepare(self):
-        store = sparqlstore.SPARQLUpdateStore(queryEndpoint = config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'],
-                    update_endpoint = config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'] + "/statements", context_aware = False)
+        #Configure a Graph
+        store = sparqlstore.SPARQLUpdateStore(
+                    queryEndpoint = config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'],
+                    update_endpoint = config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'] + "/statements", 
+                    context_aware = False)
         graph = rdflib.Graph(store)
         self.repo = graph
 
@@ -76,8 +88,6 @@ class CEURSpider(Spider):
                 parse_workshop_summary(self.repo, [tr[i], tr[i+1]])
 
     def task_workshop(self, grab, task):
-        print "Parsing workshop " + task.url + "..."
-
         self.out.write("<" + task.url + ">" + " <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://swrc.ontoware.org/ontology#Proceedings> .\n")
         
         # parse workshops
