@@ -6,51 +6,53 @@ from grab.tools.logs import default_logging
 from grab import Grab
 import re
 import rdflib
-from rdflib.namespace import FOAF, RDF, RDFS, XSD, DC
+from rdflib.namespace import FOAF, RDF, RDFS, XSD, DC, DCTERMS
 import urllib
 import config
 from rdflib.plugins.stores import sparqlstore
 
 SWRC = rdflib.Namespace("http://swrc.ontoware.org/ontology#")
 
-def parse_workshop_publication( workshop, node):
-    link = node.find("a")
-    publication_link = workshop+link.get('href')
-    publication_label = link.text
-    br_tag = node.find("br")
-    i_tag = node.find("i")
-    if not i_tag is None:
-        publication_authors = i_tag.text.split(',')
-    else:
-        publication_authors = br_tag.tail.split(',')
+def parse_workshop_publication_mf(repo, workshop, link):
+    publication_link = workshop + link.get('href')
+    publication_label = link.find_class('CEURTITLE')[0].text
+    print "Pub link:" + publication_link
+    print "Publi label: " + publication_label
 
-    print "**** FIND NEW PAPER *********"
-    print publication_label.strip()
-    print publication_link.strip()
-    for publication_author in publication_authors:
-        print publication_author.strip()
+def parse_workshop_publication(repo, workshop, link):
+    publication_link = workshop + link.get('href')
+    publication_label = link.text.strip()
+    volume_number = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', workshop).group(1)
+    
+    print "Pub link: " + publication_link
+    print "Pub label: " + publication_label
+    #br_tag = node.find("br")
+    #i_tag = node.find("i")
+    #if not i_tag is None:
+    #    publication_authors = i_tag.text.split(',')
+    #else:
+    #    publication_authors = br_tag.tail.split(',')
+
+    #print "**** FIND NEW PAPER *********"
+    #print publication_label.strip()
+    #print publication_link.strip()
+    #for publication_author in publication_authors:
+    #    print publication_author.strip()
+    
+    #Saving RDF to the repo
+    proceedings = rdflib.URIRef(config.id['proceedings'] + volume_number)
+    publication = rdflib.URIRef(config.id['publication'] + urllib.quote('ceus-ws-' + volume_number + '-' + publication_label))
+    repo.add((proceedings, DCTERMS.partOf, publication))
+    repo.add((publication, RDF.type, FOAF.Document))
+    repo.add((publication, DCTERMS.partOf, proceedings))
+    repo.add((publication, RDF.type, SWRC.InProceedings))
+    repo.add((publication, RDFS.label, rdflib.Literal(publication_label, datatype=XSD.string)))
+    repo.add((publication, FOAF.homepage, rdflib.Literal(publication_link, datatype=XSD.anyURI)))
 
 def format_str(text):
     text = text.encode('utf8')
     text=' '.join(text.split())
     return text
-
-def encode(string):
-    if isinstance(string, list):
-        out = []
-        for val in string:
-            if isinstance(val, unicode):
-                val = val.encode('utf-8')
-            out = out + [val]
-        return out
-    elif isinstance(string, str):
-        #print "is string"
-        return string
-    elif isinstance(string, unicode):
-        #print "is unicode string"
-        return string.encode('utf-8')
-    else:
-        raise
 
 def parse_workshop_summary(repo, tr):
     #Parsing the page
@@ -73,7 +75,7 @@ def parse_workshop_summary(repo, tr):
         repo.add((proceedings, RDFS.label, rdflib.Literal(extended_title, datatype = XSD.string)))
         repo.add((proceedings, FOAF.homepage, rdflib.Literal(url, datatype = XSD.anyURI)))
         for editor in editors:
-            agent = rdflib.URIRef(config.id['person'] + urllib.quote(encode(editor)))
+            agent = rdflib.URIRef(config.id['person'] + urllib.quote(editor))
             repo.add((agent, RDF.type, FOAF.Agent))
             repo.add((agent, FOAF.name, rdflib.Literal(editor, datatype = XSD.string)))
             repo.add((proceedings, SWRC.editor, agent))
@@ -91,20 +93,17 @@ class CEURSpider(Spider):
                     update_endpoint = config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'] + "/statements", 
                     context_aware = False)
         graph = rdflib.Graph(store)
-        graph.bind('foaf', FOAF)
-        graph.bind('swrc', SWRC)
-        graph.bind('rdf', RDF)
-        graph.bind('rdfs', RDFS)
         self.repo = graph
 
     def task_initial(self, grab, task):
         if task.url.endswith('.pdf'):
             #parse a .pdf file
-            print "Parsing .pdf file " + task.url
+            #print "Parsing .pdf file " + task.url
+            pass
         elif 'Vol' in task.url:
             #parse a workshop
             print "Parsing a workshop " + task.url
-            #yield Task('workshop', url = task.url)
+            yield Task('workshop', url = task.url)
         else:
             #parse the index page
             print "Parsing the index page..."
@@ -113,12 +112,14 @@ class CEURSpider(Spider):
                 parse_workshop_summary(self.repo, [tr[i], tr[i+1]])
 
     def task_workshop(self, grab, task):
-        self.out.write("<" + task.url + ">" + " <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://swrc.ontoware.org/ontology#Proceedings> .\n")
-        
-        # parse workshops
-        # vol-1
-        for node in grab.tree.xpath('//*/ul/li | //*/ol/li'):
-            parse_workshop_publication(task.url, node)
+        #parse a workshop page
+        for doc in grab.tree.xpath('//a[contains(@href, ".pdf")]'):
+            if doc.find_class('CEURTITLE'):
+                #workshop uses microformats
+                #parse_workshop_publication_mf(self.repo, task.url, doc)
+                pass
+            else:
+                parse_workshop_publication(self.repo, task.url, doc)
 
 def main():
 
