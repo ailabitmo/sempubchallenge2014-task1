@@ -6,7 +6,7 @@ from grab.tools.logs import default_logging
 from grab import Grab
 import re
 import rdflib
-from rdflib.namespace import FOAF, RDF, RDFS
+from rdflib.namespace import FOAF, RDF, RDFS, XSD, DC
 import urllib
 import config
 from rdflib.plugins.stores import sparqlstore
@@ -35,29 +35,52 @@ def format_str(text):
     text=' '.join(text.split())
     return text
 
-def toid(string):
-    return re.sub(r'\s*', '_', string)
+def encode(string):
+    if isinstance(string, list):
+        out = []
+        for val in string:
+            if isinstance(val, unicode):
+                val = val.encode('utf-8')
+            out = out + [val]
+        return out
+    elif isinstance(string, str):
+        #print "is string"
+        return string
+    elif isinstance(string, unicode):
+        #print "is unicode string"
+        return string.encode('utf-8')
+    else:
+        raise
 
 def parse_workshop_summary(repo, tr):
     #Parsing the page
     link = tr[0].find('.//td[last()]//a[@href]') #link(<a>) to workshop
+    url = link.get('href')
+    volume_number = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', url).group(1)
     summary = tr[1].find('.//td[last()]').text_content() #desription of workshop (title, editors, etc.)
-    m = re.match(r"(.*)(\nEdited\s*by\s*:\s*)(.*)(\nSubmitted\s*by\s*:\s*)(.*)(\nPublished\s*on\s*CEUR-WS:\s*)(.*)(\nONLINE)(.*)", 
+    summary_match = re.match(r"(.*)(\nEdited\s*by\s*:\s*)(.*)(\nSubmitted\s*by\s*:\s*)(.*)(\nPublished\s*on\s*CEUR-WS:\s*)(.*)(\nONLINE)(.*)", 
                     summary, re.I | re.M | re.S)
-    extended_title = m.group(1) #title of workshop
-    print extended_title
-    editors = re.split(r",{1}\s*", m.group(3))
-    print editors
-    submitters = m.group(5)
-    submittion_date = m.group(7)
+    if summary_match:
+        print "Parsed summary of workshop " + url
+        extended_title = re.sub(r'\n', '', summary_match.group(1)) #title of workshop
+        editors = re.split(r",{1}\s*", summary_match.group(3)) #editors of workshop
+        #submitters = m.group(5)
+        #submittion_date = m.group(7)
 
-    #Saving RDF to the repo
-    proceedings = rdflib.URIRef(link.get('href'))
-    repo.add((proceedings, RDF.type, SWRC.Proceedings))
-    repo.add((proceedings, RDFS.label, rdflib.Literal(extended_title)))
-    for editor in editors:
-        agent = rdflib.URIRef(config.dataset['base'] + toid(editor))
-        repo.add((agent, RDF.type, FOAF.Agent))
+        #Saving RDF to the repo
+        proceedings = rdflib.URIRef(config.id['proceedings'] + volume_number)
+        repo.add((proceedings, RDF.type, SWRC.Proceedings))
+        repo.add((proceedings, RDFS.label, rdflib.Literal(extended_title, datatype = XSD.string)))
+        repo.add((proceedings, FOAF.homepage, rdflib.Literal(url, datatype = XSD.anyURI)))
+        for editor in editors:
+            agent = rdflib.URIRef(config.id['person'] + urllib.quote(encode(editor)))
+            repo.add((agent, RDF.type, FOAF.Agent))
+            repo.add((agent, FOAF.name, rdflib.Literal(editor, datatype = XSD.string)))
+            repo.add((proceedings, SWRC.editor, agent))
+            repo.add((agent, DC.creator, proceedings))
+    else:
+        #There is no summary information for a workshop
+        pass
 
 class CEURSpider(Spider):
 
@@ -68,11 +91,13 @@ class CEURSpider(Spider):
                     update_endpoint = config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'] + "/statements", 
                     context_aware = False)
         graph = rdflib.Graph(store)
+        graph.bind('foaf', FOAF)
+        graph.bind('swrc', SWRC)
+        graph.bind('rdf', RDF)
+        graph.bind('rdfs', RDFS)
         self.repo = graph
 
     def task_initial(self, grab, task):
-        #for xpath in grab.tree.xpath('//*/table/tbody/tr/td/b/font/a/@href'):
-        #yield Task('workshop_parse', 'http://ceur-ws.org/Vol-1124/')
         if task.url.endswith('.pdf'):
             #parse a .pdf file
             print "Parsing .pdf file " + task.url
@@ -84,7 +109,7 @@ class CEURSpider(Spider):
             #parse the index page
             print "Parsing the index page..."
             tr = grab.tree.xpath('/html/body/table[last()]/tr[td]')
-            for i in range(0, len(tr) / 2, 2):
+            for i in range(0, len(tr), 2):
                 parse_workshop_summary(self.repo, [tr[i], tr[i+1]])
 
     def task_workshop(self, grab, task):
