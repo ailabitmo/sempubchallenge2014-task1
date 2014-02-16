@@ -4,6 +4,7 @@
 from grab.spider import Spider, Task, Data
 from grab.tools.logs import default_logging
 from grab import Grab
+from items import Publication
 import re
 
 import publication_parser
@@ -17,44 +18,23 @@ from rdflib.plugins.stores import sparqlstore
 SWRC = rdflib.Namespace("http://swrc.ontoware.org/ontology#")
 
 def parse_workshop_publication_mf(repo, workshop, link):
-    publication_link = workshop + link.get('href')
-    publication_label = link.find_class('CEURTITLE')[0].text
-    print "Pub link:" + publication_link
-    print "Publi label: " + publication_label
+    publication = Publication()
+    publication.link = workshop + link.get('href')
+    publication.title = link.find_class('CEURTITLE')[0].text
+    publication.volume_number = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', workshop).group(1)
 
-#def parse_workshop_publication(repo, workshop, link):
+    print "Pub link:" + publication.link
+    print "Pub label: " + publication.title
 
-    # publication_link = workshop + link.get('href')
-    # publication_label = link.text.strip()
-    # volume_number = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', workshop).group(1)
-    #
-    # print "Pub link: " + publication_link
-    # print "Pub label: " + publication_label
+    publication.save(repo)
 
 
-
-    # br_tag = node.find("br")
-    # i_tag = node.find("i")
-    # if not i_tag is None:
-    #    publication_authors = i_tag.text.split(',')
-    # else:
-    #    publication_authors = br_tag.tail.split(',')
-    #
-    # print "**** FIND NEW PAPER *********"
-    # print publication_label.strip()
-    # print publication_link.strip()
-    # for publication_author in publication_authors:
-    #    print publication_author.strip()
-    #
-    #Saving RDF to the repo
-    # proceedings = rdflib.URIRef(config.id['proceedings'] + volume_number)
-    # publication = rdflib.URIRef(config.id['publication'] + urllib.quote('ceus-ws-' + volume_number + '-' + publication_label))
-    # repo.add((proceedings, DCTERMS.partOf, publication))
-    # repo.add((publication, RDF.type, FOAF.Document))
-    # repo.add((publication, DCTERMS.partOf, proceedings))
-    # repo.add((publication, RDF.type, SWRC.InProceedings))
-    # repo.add((publication, RDFS.label, rdflib.Literal(publication_label, datatype=XSD.string)))
-    # repo.add((publication, FOAF.homepage, rdflib.Literal(publication_link, datatype=XSD.anyURI)))
+def parse_workshop_publication(repo, workshop, link):
+    publication = Publication()
+    publication.link = workshop + link.get('href')
+    publication.title = link.text.strip()
+    publication.volume_number = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', workshop).group(1)
+    publication.save(repo)
 
 def format_str(text):
     text = text.encode('utf8')
