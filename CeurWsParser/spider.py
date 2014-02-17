@@ -103,6 +103,10 @@ class CEURSpider(Spider):
         graph = rdflib.Graph(store)
         self.repo = graph
 
+        self.publication_results_done=0
+        self.publication_results_failed=0
+
+
     def task_initial(self, grab, task):
         if task.url.endswith('.pdf'):
             #parse a .pdf file
@@ -120,17 +124,17 @@ class CEURSpider(Spider):
                 parse_workshop_summary(self.repo, [tr[i], tr[i+1]])
 
     def task_workshop(self, grab, task):
+        try:
+            publication_parser.parse_publications(self,grab,task)
+            self.publication_results_done+=1
+        except:
+            self.validate.write(task.url+'\n')
+            self.publication_results_failed+=1
 
-        publication_parser.parse_publications(self,grab,task)
-        #parse a workshop page
-        # for doc in grab.tree.xpath('//a[contains(@href, ".pdf")]'):
-        #     if doc.find_class('CEURTITLE'):
-        #         #workshop uses microformats
-        #         #parse_workshop_publication_mf(self.repo, task.url, doc)
-        #         pass
-        #     else:
-        #         parse_workshop_publication(self.repo, task.url, doc)
 
+    def print_stats(self):
+        print "Publications done:",self.publication_results_done
+        print "Publications failed:",self.publication_results_failed
 def main():
 
     threads = 1
@@ -148,6 +152,7 @@ def main():
     fl.close()
     flval.close()
 
+    bot.print_stats()
     #print(bot.render_stats())
 
 if __name__ == '__main__':

@@ -20,7 +20,34 @@ class Model:
         else:
             return obj
 
+class Creator(Model):
+    def __init__(self, name=None):
+        self.name = name
+
+    def pretty_print(self):
+        print "EDITOR NAME: ",self.name
+
+    def save(self, graph):
+        agent = URIRef(config.id['person'] + urllib.quote(self.name.encode('utf-8')))
+        graph.add((agent, RDF.type, FOAF.Agent))
+        graph.add((agent, FOAF.name, Literal(self.name, datatype = XSD.string)))
+        return agent
+
+
+
 class Publication(Model):
+    def __init__(self, volume_number=None, title=None, link=None, creators=None):
+        self.volume_number = volume_number
+        self.title = title
+        self.link = link
+        self.creators = creators
+
+    def pretty_print(self):
+        print "PUB NAME: ", self.title
+        print "PUB LINK: ", self.link
+        for editor in self.creators:
+            editor.pretty_print()
+
     def save(self, graph):
         proceedings = URIRef(config.id['proceedings'] + self.volume_number)
         publication = URIRef(config.id['publication'] + urllib.quote('ceus-ws-' + self.volume_number + '-' + self.title))
@@ -30,6 +57,11 @@ class Publication(Model):
         graph.add((publication, RDF.type, SWRC.InProceedings))
         graph.add((publication, RDFS.label, Literal(self.title, datatype=XSD.string)))
         graph.add((publication, FOAF.homepage, Literal(self.link, datatype=XSD.anyURI)))
+        for creator in self.creators:
+            agent = creator.save(graph)
+            graph.add((agent, DC.creator, publication))
+        return publication
+
 
 class Workshop(Model):
     def __init__(self):
