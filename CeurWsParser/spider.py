@@ -6,6 +6,9 @@ from grab.tools.logs import default_logging
 from grab import Grab
 from items import Publication, Proceedings, Workshop
 import re
+
+import publication_parser
+
 import rdflib
 from rdflib.namespace import FOAF, RDF, RDFS, XSD, DC, DCTERMS
 import urllib
@@ -25,25 +28,12 @@ def parse_workshop_publication_mf(repo, workshop, link):
 
     publication.save(repo)
 
+
 def parse_workshop_publication(repo, workshop, link):
     publication = Publication()
     publication.link = workshop + link.get('href')
     publication.title = link.text.strip()
     publication.volume_number = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', workshop).group(1)
-
-    #br_tag = node.find("br")
-    #i_tag = node.find("i")
-    #if not i_tag is None:
-    #    publication_authors = i_tag.text.split(',')
-    #else:
-    #    publication_authors = br_tag.tail.split(',')
-
-    #print "**** FIND NEW PAPER *********"
-    #print publication_label.strip()
-    #print publication_link.strip()
-    #for publication_author in publication_authors:
-    #    print publication_author.strip()
-
     publication.save(repo)
 
 def format_str(text):
@@ -132,18 +122,20 @@ class CEURSpider(Spider):
                 parse_workshop_summary(self.repo, [tr[i], tr[i+1]])
 
     def task_workshop(self, grab, task):
+
+        publication_parser.parse_publications(self,grab,task)
         #parse a workshop page
-        for doc in grab.tree.xpath('//a[contains(@href, ".pdf")]'):
-            if doc.find_class('CEURTITLE'):
-                #workshop uses microformats
-                #parse_workshop_publication_mf(self.repo, task.url, doc)
-                pass
-            else:
-                parse_workshop_publication(self.repo, task.url, doc)
+        # for doc in grab.tree.xpath('//a[contains(@href, ".pdf")]'):
+        #     if doc.find_class('CEURTITLE'):
+        #         #workshop uses microformats
+        #         #parse_workshop_publication_mf(self.repo, task.url, doc)
+        #         pass
+        #     else:
+        #         parse_workshop_publication(self.repo, task.url, doc)
 
 def main():
 
-    threads = 5
+    threads = 1
     default_logging(grab_log="log.txt")
     
     fl = open("out.txt","w")
