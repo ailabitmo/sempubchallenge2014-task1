@@ -10,6 +10,7 @@ id = dict(
     person = sparqlstore['uri_base'] + "person/",
     proceedings = sparqlstore['uri_base'] + "proceedings/ceur-ws/",
     publication = sparqlstore['uri_base'] + "publication/"
+    workshop = sparqlstore['uri_base'] + "workshop/"
 )
 
 input_urls = ["http://ceur-ws.org/"]

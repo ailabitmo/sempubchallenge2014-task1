@@ -15,8 +15,6 @@ import urllib
 import config
 from rdflib.plugins.stores import sparqlstore
 
-SWRC = rdflib.Namespace("http://swrc.ontoware.org/ontology#")
-
 def parse_workshop_publication_mf(repo, workshop, link):
     publication = Publication()
     publication.link = workshop + link.get('href')

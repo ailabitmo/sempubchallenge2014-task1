@@ -6,6 +6,7 @@ import traceback
 class NoTemplateError(Exception):
     pass
 
+#TODO Надо перенести в items.py
 class Editor(object):
     def __init__(self, name=None):
         self.name = name
@@ -16,6 +17,7 @@ class Editor(object):
     def process_rdf_data(self):
         pass
 
+#TODO Надо перенести в items.py
 class Publication(object):
     def __init__(self, workshop=None, name=None, link=None, editors=None):
         self.workshop = workshop
