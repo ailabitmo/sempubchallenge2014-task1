@@ -4,7 +4,7 @@
 from grab.spider import Spider, Task, Data
 from grab.tools.logs import default_logging
 from grab import Grab
-from items import Publication
+from items import Publication, Proceedings, Workshop
 import re
 import rdflib
 from rdflib.namespace import FOAF, RDF, RDFS, XSD, DC, DCTERMS
@@ -52,31 +52,54 @@ def format_str(text):
     return text
 
 def parse_workshop_summary(repo, tr):
-    #Parsing the page
+    workshop = Workshop()
+    proceedings = Proceedings()
     link = tr[0].find('.//td[last()]//a[@href]') #link(<a>) to workshop
-    url = link.get('href')
-    volume_number = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', url).group(1)
+    workshop.label = link.text
+    workshop.url = link.get('href')
+    workshop.proceedings = proceedings
+    proceedings.workshop = workshop
+    proceedings.url = link.get('href')
+    proceedings.volume_number = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', proceedings.url).group(1)
     summary = tr[1].find('.//td[last()]').text_content() #desription of workshop (title, editors, etc.)
     summary_match = re.match(r"(.*)(\nEdited\s*by\s*:\s*)(.*)(\nSubmitted\s*by\s*:\s*)(.*)(\nPublished\s*on\s*CEUR-WS:\s*)(.*)(\nONLINE)(.*)", 
                     summary, re.I | re.M | re.S)
     if summary_match:
-        print "Parsed summary of workshop " + url
-        extended_title = re.sub(r'\n', '', summary_match.group(1)) #title of workshop
-        editors = re.split(r",{1}\s*", summary_match.group(3)) #editors of workshop
+        from datetime import datetime
+        print "Parsed summary of workshop " + proceedings.url
+        proceedings.label = re.sub(r'\n', '', summary_match.group(1)) #title of workshop
+        proceedings.editors = re.split(r",{1}\s*", summary_match.group(3)) #editors of workshop
         #submitters = m.group(5)
-        #submittion_date = m.group(7)
-
-        #Saving RDF to the repo
-        proceedings = rdflib.URIRef(config.id['proceedings'] + volume_number)
-        repo.add((proceedings, RDF.type, SWRC.Proceedings))
-        repo.add((proceedings, RDFS.label, rdflib.Literal(extended_title, datatype = XSD.string)))
-        repo.add((proceedings, FOAF.homepage, rdflib.Literal(url, datatype = XSD.anyURI)))
-        for editor in editors:
-            agent = rdflib.URIRef(config.id['person'] + urllib.quote(editor))
-            repo.add((agent, RDF.type, FOAF.Agent))
-            repo.add((agent, FOAF.name, rdflib.Literal(editor, datatype = XSD.string)))
-            repo.add((proceedings, SWRC.editor, agent))
-            repo.add((agent, DC.creator, proceedings))
+        time_match_1 = re.match(r'.*,\s*([a-zA-Z]+)[,\s]*(\d{1,2})[\w\s]*,\s*(\d{4})', proceedings.label, re.I)
+        time_match_2 = re.match(r'.*,\s*([a-zA-Z]+)[,\s]*(\d{1,2})[\w\s]*-\s*(\d{1,2})[\w\s,]*(\d{4})', proceedings.label, re.I)
+        time_match_3 = re.match(r'.*,\s*([a-zA-Z]+)\s*(\d+)\s*-\s*([a-zA-Z]+)\s*(\d+)\s*,\s*(\d{4})', proceedings.label, re.I)
+        if time_match_1:
+            try:
+                workshop.time = datetime.strptime(time_match_1.group(1) + "-" + time_match_1.group(2) + "-" + time_match_1.group(3), '%B-%d-%Y')
+            except:
+                pass
+        elif time_match_2:
+            try:
+                workshop.time = [
+                                    datetime.strptime(time_match_2.group(1) + "-" + time_match_2.group(2) + "-" + time_match_2.group(4), '%B-%d-%Y'),
+                                    datetime.strptime(time_match_2.group(1) + "-" + time_match_2.group(3) + "-" + time_match_2.group(4), '%B-%d-%Y')
+                                ]
+            except:
+                pass
+        elif time_match_3:
+            try:
+                workshop.time = [
+                                    datetime.strptime(time_match_3.group(1) + "-" + time_match_3.group(2) + "-" + time_match_3.group(5), '%B-%d-%Y'),
+                                    datetime.strptime(time_match_3.group(3) + "-" + time_match_3.group(4) + "-" + time_match_3.group(5), '%B-%d-%Y')
+                                ]
+            except:
+                pass
+        else:
+            #There is no event time information
+            pass
+        proceedings.submittion_date = datetime.strptime(proceedings.trim(summary_match.group(7)), '%d-%b-%Y')
+        workshop.save(repo)
+        proceedings.save(repo)
     else:
         #There is no summary information for a workshop
         pass
