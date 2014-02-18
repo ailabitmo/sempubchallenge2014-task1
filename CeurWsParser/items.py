@@ -60,8 +60,8 @@ class Publication(Model):
                     (publication, RDF.type, FOAF.Document, ''),
                     (publication, DCTERMS.partOf, proceedings, ''),
                     (publication, RDF.type, SWRC.InProceedings, ''),
-                    (publication, RDFS.label, Literal(self.title, datatype=XSD.string, '')),
-                    (publication, FOAF.homepage, Literal(self.link, datatype=XSD.anyURI, ''))
+                    (publication, RDFS.label, Literal(self.title, datatype=XSD.string), ''),
+                    (publication, FOAF.homepage, Literal(self.link, datatype=XSD.anyURI), '')
                 ])
         for creator in self.creators:
             agent = creator.save(graph)
