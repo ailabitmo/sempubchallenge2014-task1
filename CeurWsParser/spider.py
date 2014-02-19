@@ -40,9 +40,11 @@ def format_str(text):
     return text
 
 def parse_workshop_summary(repo, tr):
+    link = tr[0].find('.//td[last()]//a[@href]') #link(<a>) to workshop
+    if link.get('href') not in config.input_urls:
+        return
     workshop = Workshop()
     proceedings = Proceedings()
-    link = tr[0].find('.//td[last()]//a[@href]') #link(<a>) to workshop
     workshop.label = link.text
     workshop.url = link.get('href')
     workshop.proceedings = proceedings
