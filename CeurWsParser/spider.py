@@ -125,7 +125,7 @@ class CEURSpider(Spider):
 
     def task_workshop(self, grab, task):
         try:
-            publication_parser.parse_publications(self,grab,task)
+            publication_parser.parse_publications(self.repo,grab,task)
             self.publication_results_done+=1
         except:
             self.validate.write(task.url+'\n')
