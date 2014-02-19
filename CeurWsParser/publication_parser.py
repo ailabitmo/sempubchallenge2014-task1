@@ -44,7 +44,9 @@ def template1( grab, task):
             for publication_editor in publication.findall('span/span[@rel="dcterms:creator"]'):
                 publication_editor_name = publication_editor.find('span[@property="foaf:name"]').text_content();
                 editors.append(items.Creator(publication_editor_name))
-            publications.append(items.Publication(volume_number, publication_name, workshop+publication_link ,editors))
+            publication_object = items.Publication(volume_number, publication_name, workshop+publication_link, editors)
+            if check_for_workshop_paper(publication_object):
+                publications.append(publication_object)
         except:
             pass
 
@@ -68,7 +70,9 @@ def template2( grab, task):
             for publication_editor in publication.find_class('CEURAUTHORS'):
                 for publication_editor_name in publication_editor.text_content().split(","):
                     editors.append(items.Creator(publication_editor_name.strip()))
-            publications.append(items.Publication(volume_number, publication_name, workshop+publication_link, editors))
+            publication_object = items.Publication(volume_number, publication_name, workshop+publication_link, editors)
+            if check_for_workshop_paper(publication_object):
+                publications.append(publication_object)
         except:
             pass
 
