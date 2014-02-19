@@ -12,7 +12,7 @@ class NoPublicationsError(Exception):
     pass
 
 def parse_publications(repo, grab, task):
-    parse_templates = ['template1','template4']
+    parse_templates = ['template1','template2','template3']
 
     for parse_template in parse_templates:
         try:
@@ -20,10 +20,10 @@ def parse_publications(repo, grab, task):
             for publication in publications:
                 pass
                 #pub.pretty_print()
-                #publication.save(repo)
+                publication.save(repo)
             print "Parse done", task.url, ". Count of publications: ", len(publications), " ",parse_template
             return
-        except NoPublicationsError as e:
+        except Exception as e:
             # print "ERROR ",e.message
             # print traceback.format_exc()
             pass
@@ -37,13 +37,16 @@ def template1( grab, task):
     volume_number = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', workshop).group(1)
 
     for publication in grab.tree.xpath('//div[@class="CEURTOC"]/*[@rel="dcterms:hasPart"]/li'):
-        publication_name = publication.find('a[@typeof="bibo:Article"]/span').text_content()
-        publication_link = publication.find('a[@typeof="bibo:Article"]').get('href')
-        editors = []
-        for publication_editor in publication.findall('span/span[@rel="dcterms:creator"]'):
-            publication_editor_name = publication_editor.find('span[@property="foaf:name"]').text_content();
-            editors.append(items.Creator(publication_editor_name))
-        publications.append(items.Publication(volume_number, publication_name, workshop+publication_link ,editors))
+        try:
+            publication_name = publication.find('a[@typeof="bibo:Article"]/span').text_content()
+            publication_link = publication.find('a[@typeof="bibo:Article"]').get('href')
+            editors = []
+            for publication_editor in publication.findall('span/span[@rel="dcterms:creator"]'):
+                publication_editor_name = publication_editor.find('span[@property="foaf:name"]').text_content();
+                editors.append(items.Creator(publication_editor_name))
+            publications.append(items.Publication(volume_number, publication_name, workshop+publication_link ,editors))
+        except:
+            pass
 
     if(len(publications)==0):
         raise NoPublicationsError()
@@ -51,7 +54,7 @@ def template1( grab, task):
     return publications
 
 
-def template4( grab, task):
+def template2( grab, task):
     publications = []
     workshop = task.url
     volume_number = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', workshop).group(1)
@@ -74,8 +77,45 @@ def template4( grab, task):
 
     return publications
 
-# def check_for_valid_paper(publication):
-#     if(publication.link)
+def template3( grab, task):
+    publications = []
+    workshop = task.url
+    volume_number = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', workshop).group(1)
+
+
+    for publication in grab.tree.xpath('//li'):
+        try:
+            publication_name = publication.find('a').text_content()
+            publication_link = publication.find('a').get('href')
+            editors = []
+            publication_editors = publication.find('i')
+            if publication_editors is None:
+                publication_editors_str=publication.find('br').tail
+            else:
+               publication_editors_str =  publication_editors.text_content()
+
+            for publication_editor_name in publication_editors_str.split(","):
+                editors.append(items.Creator(publication_editor_name.strip()))
+
+            publication_object = items.Publication(volume_number, publication_name, workshop+publication_link, editors)
+            if check_for_workshop_paper(publication_object):
+                publications.append(publication_object)
+        except Exception as e:
+            # print "ERROR ",e.message
+            # print traceback.format_exc()
+            pass
+
+    if(len(publications)==0):
+        raise NoPublicationsError()
+
+    return publications
+
+def check_for_workshop_paper(publication):
+     if publication.title.lower()=='preface' or publication.title.lower()=='overview' or publication.title.lower()=='introduction':
+         return False
+
+     return True
+
 
 if __name__ == '__main__':
     print "not runnable"
