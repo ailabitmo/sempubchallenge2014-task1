@@ -17,6 +17,10 @@ class Model:
         import re
         if isinstance(obj, str) or isinstance(obj, unicode):
             return re.sub(r'\s{2,}|\n', '', obj)
+        elif isinstance(obj, list) and len(obj) > 0 and (isinstance(obj[0], str) or isinstance(obj[0], unicode)):
+            for i in range(0, len(obj)):
+                obj[i] = self.trim(obj[i])
+            return obj
         else:
             return obj
 
