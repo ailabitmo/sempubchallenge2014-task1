@@ -1,2 +1,4 @@
-from workshop_parser import WorkshopSummaryParser, WorkshopPageParser
-from proceedings_parser import ProceedingsSummaryParser
+from CeurWsParser.parsers.workshop_parser import WorkshopSummaryParser, WorkshopPageParser
+from CeurWsParser.parsers.proceedings_parser import ProceedingsSummaryParser
+from CeurWsParser.parsers.publication_parser import PublicationParser
+from CeurWsParser.parsers.base import Parser

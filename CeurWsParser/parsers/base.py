@@ -1,3 +1,11 @@
+import inspect
+
+from grab.error import DataNotFound
+
+
+class NoTemplateError(Exception):
+    pass
+
 
 class Parser:
     def __init__(self, grab, task, graph):
@@ -7,10 +15,23 @@ class Parser:
         self.data = {}
 
     def parse(self):
-        pass
+        parsed = False
+        for method in inspect.getmembers(self, predicate=inspect.ismethod):
+            method_name = method[0]
+            if method_name.startswith('parse_template_'):
+                try:
+                    eval('self.' + method_name + '()')
+                    parsed = True
+                    break
+                except DataNotFound:
+                    import traceback
+                    traceback.print_exc()
+                    pass
+        if not parsed:
+            raise NoTemplateError("%s" % self.task.url)
 
     def write(self):
-        pass
+        raise Exception("Method doesn't have implementation!")
 
     def write_triples(self, triples):
         if isinstance(triples, list):

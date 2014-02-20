@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 
 import re
-import traceback
 
 from grab.spider import Spider
 from grab.tools.logs import default_logging
 import rdflib
 from rdflib.plugins.stores import sparqlstore
 
-from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser
+from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, PublicationParser
 from CeurWsParser import config
 
 
 mappings = dict(
     url_mappings={
-        r'^http://ceur-ws.org/$': 'index',
-        r'^http://ceur-ws.org/Vol-\d+/*$': 'workshop',
-        r'^http://ceur-ws.org/Vol-\d+/.*\.pdf$': 'publication'
+        r'^http://ceur-ws\.org/*$': 'index',
+        r'^http://ceur-ws\.org/Vol-\d+/*$': 'workshop',
+        r'^http://ceur-ws\.org/Vol-\d+/.*\.pdf$': 'publication'
     },
     parser_mappings={
         'index': [
@@ -25,7 +24,8 @@ mappings = dict(
             ProceedingsSummaryParser
         ],
         'workshop': [
-            WorkshopPageParser
+            # WorkshopPageParser,
+            # PublicationParser
         ],
         'publication': []
     }
@@ -44,6 +44,7 @@ class CEURSpider(Spider):
             context_aware=False))
 
     def task_initial(self, grab, task):
+        print "[TASK %s] started" % task.url
         for url_rex in mappings['url_mappings']:
             if re.match(url_rex, task.url, re.I):
                 value = mappings['url_mappings'][url_rex]
@@ -52,8 +53,9 @@ class CEURSpider(Spider):
                     try:
                         p.parse()
                         p.write()
-                    except:
-                        print "[PARSER %s] Parsing failed!" % parser
+                    except Exception as ex:
+                        print "[TASK %s][PARSER %s] Error: %s" % (task.url, parser, ex)
+                        import traceback
                         traceback.print_exc()
 
     # def task_workshop(self, grab, task):
