@@ -24,8 +24,8 @@ class Parser:
                     parsed = True
                     break
                 except DataNotFound:
-                    import traceback
-                    traceback.print_exc()
+                    # import traceback
+                    # traceback.print_exc()
                     pass
         if not parsed:
             raise NoTemplateError("%s" % self.task.url)

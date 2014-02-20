@@ -1,5 +1,6 @@
 from datetime import datetime
 import re
+import urllib
 
 from grab.tools import rex
 from grab.error import DataNotFound
@@ -8,7 +9,15 @@ from rdflib.namespace import RDF, RDFS, XSD
 
 from base import Parser
 from CeurWsParser import config
-from CeurWsParser.namespaces import BIBO, TIMELINE
+from CeurWsParser.namespaces import BIBO, TIMELINE, SWC
+
+
+def extract_volume_number(url):
+    return rex.rex(url, r'.*http://ceur-ws.org/Vol-(\d+).*').group(1)
+
+
+def create_workshop_uri(volume_number):
+    return URIRef(config.id['workshop'] + volume_number)
 
 
 class WorkshopSummaryParser(Parser):
@@ -22,7 +31,7 @@ class WorkshopSummaryParser(Parser):
                 summary = tr[i + 1].find('.//td[last()]').text_content()
                 title = rex.rex(summary, r'(.*)Edited\s*by.*', re.I | re.S).group(1)
 
-                workshop['volume_number'] = rex.rex(href.get('href'), r'.*http://ceur-ws.org/Vol-(\d+).*').group(1)
+                workshop['volume_number'] = extract_volume_number(href.get('href'))
                 workshop['label'] = href.text
                 workshop['url'] = href.get('href')
                 workshop['time'] = []
@@ -77,7 +86,7 @@ class WorkshopSummaryParser(Parser):
     def write(self):
         triples = []
         for workshop in self.data['workshops']:
-            resource = URIRef(config.id['workshop'] + workshop['volume_number'])
+            resource = create_workshop_uri(workshop['volume_number'])
             proceedings = URIRef(config.id['proceedings'] + workshop['volume_number'])
             triples.append((resource, RDF.type, BIBO.Workshop))
             triples.append((resource, RDFS.label, Literal(workshop['label'], datatype=XSD.string)))
@@ -102,10 +111,25 @@ class WorkshopSummaryParser(Parser):
 
 
 class WorkshopPageParser(Parser):
-    def write(self):
-        #print self.data['volume_number']
-        pass
+    def parse_template_1(self):
+        self.data['volume_number'] = extract_volume_number(self.task.url)
+        try:
+            colocated = rex.rex(self.grab.tree.xpath('//span[@class="CEURCOLOCATED"]/text()')[0],
+                                r'^([a-zA-Z\s]+).*(\d{4})$')
+        except IndexError as ex:
+            raise DataNotFound(ex)
+        self.data['acronym'] = colocated.group(1).strip()
+        self.data['year'] = colocated.group(2).strip()
+        print self.data['acronym']
+        print self.data['year']
 
-    def parse_template_main(self):
-        #self.data['volume_number'] = rex.rex(self.task.url, r'.*http://ceur-ws.org/Vol-(\d+).*').group(1)
-        pass
+    def write(self):
+        triples = []
+        workshop = create_workshop_uri(self.data['volume_number'])
+        conference = URIRef(config.id['conference'] + urllib.quote(self.data['acronym'] + "-" + self.data['year']))
+        triples.append((conference, RDF.type, SWC.OrganizedEvent))
+        triples.append((conference, RDFS.label, Literal(self.data['acronym'], datatype=XSD.string)))
+        triples.append((conference, TIMELINE.atDate, Literal(self.data['year'], datatype=XSD.gYear)))
+        triples.append((workshop, SWC.isSubEventOf, conference))
+
+        self.write_triples(triples)

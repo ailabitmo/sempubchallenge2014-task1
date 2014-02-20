@@ -24,8 +24,8 @@ mappings = dict(
             ProceedingsSummaryParser
         ],
         'workshop': [
-            # WorkshopPageParser,
-            # PublicationParser
+            WorkshopPageParser,
+            PublicationParser
         ],
         'publication': []
     }
@@ -34,7 +34,8 @@ mappings = dict(
 
 class CEURSpider(Spider):
     def __init__(self):
-        Spider.__init__(self, thread_number=1, network_try_limit=2)
+        Spider.__init__(self, thread_number=2)
+        self.setup_grab(timeout=240)
         self.publication_results_done = 0
         self.publication_results_failed = 0
         self.repo = rdflib.Graph(sparqlstore.SPARQLUpdateStore(
