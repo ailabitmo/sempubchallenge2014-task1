@@ -115,13 +115,32 @@ class WorkshopPageParser(Parser):
         self.data['volume_number'] = extract_volume_number(self.task.url)
         try:
             colocated = rex.rex(self.grab.tree.xpath('//span[@class="CEURCOLOCATED"]/text()')[0],
-                                r'^([a-zA-Z\s]+).*(\d{4})$')
+                                r'([a-zA-Z\s*]+)\s*(\d{4})|([a-zA-Z\s*]+)\s*\'?(\d{2})')
+        except IndexError as ex:
+            raise DataNotFound(ex)
+        if colocated.group(1) and colocated.group(2):
+            self.data['acronym'] = colocated.group(1).strip()
+            self.data['year'] = colocated.group(2).strip()
+        elif colocated.group(3) and colocated.group(4):
+            self.data['acronym'] = colocated.group(3).strip()
+            self.data['year'] = '20' + colocated.group(4).strip()
+        else:
+            raise DataNotFound()
+        # print self.data['acronym']
+        # print self.data['year']
+
+    def parse_template_2(self):
+        self.data['volume_number'] = extract_volume_number(self.task.url)
+        try:
+            colocated = rex.rex(self.grab.tree.xpath('//span[@class="CEURFULLTITLE"]/text()')[0],
+                                r'.*proceedings of the ([a-zA-Z]+)(\d{4}) Workshop.*',
+                                re.I)
         except IndexError as ex:
             raise DataNotFound(ex)
         self.data['acronym'] = colocated.group(1).strip()
         self.data['year'] = colocated.group(2).strip()
-        print self.data['acronym']
-        print self.data['year']
+        # print self.data['acronym']
+        # print self.data['year']
 
     def write(self):
         triples = []
