@@ -16,6 +16,10 @@ def extract_volume_number(url):
     return rex.rex(url, r'.*http://ceur-ws.org/Vol-(\d+).*').group(1)
 
 
+def extract_year(string):
+    return '20' + string.strip()[-2:]
+
+
 def create_workshop_uri(volume_number):
     return URIRef(config.id['workshop'] + volume_number)
 
@@ -114,6 +118,15 @@ class WorkshopPageParser(Parser):
     def __init__(self, grab, task, graph):
         Parser.__init__(self, grab, task, graph, failonerror=False)
 
+    def begin_template(self):
+        self.data['volume_number'] = extract_volume_number(self.task.url)
+
+    def end_template(self):
+        # print self.task.url
+        # print self.data['acronym']
+        # print self.data['year']
+        pass
+
     def parse_template_1(self):
         """
         Examples:
@@ -121,18 +134,16 @@ class WorkshopPageParser(Parser):
             - http://ceur-ws.org/Vol-1081/
             - http://ceur-ws.org/Vol-1085/
         """
-        self.data['volume_number'] = extract_volume_number(self.task.url)
+        self.begin_template()
         try:
-            print self.grab.tree.xpath('//span[@class="CEURCOLOCATED"]/text()')[0]
             colocated = rex.rex(self.grab.tree.xpath('//span[@class="CEURCOLOCATED"]/text()')[0],
                                 r'([a-zA-Z\s*]+)[\s\']*(\d{4}|\d{2})', re.I)
         except IndexError as ex:
             raise DataNotFound(ex)
         self.data['acronym'] = colocated.group(1).strip()
-        self.data['year'] = '20' + colocated.group(2).strip()[-2:]
-        # print self.task.url
-        # print self.data['acronym']
-        # print self.data['year']
+        self.data['year'] = extract_year(colocated.group(2))
+
+        self.end_template()
 
     def parse_template_2(self):
         """
@@ -143,9 +154,9 @@ class WorkshopPageParser(Parser):
             - http://ceur-ws.org/Vol-840/
             - http://ceur-ws.org/Vol-859/
         """
-        self.data['volume_number'] = extract_volume_number(self.task.url)
+        self.begin_template()
+
         try:
-            print self.grab.tree.xpath('//span[@class="CEURFULLTITLE"]/text()')[0]
             colocated = self.rex(self.grab.tree.xpath('//span[@class="CEURFULLTITLE"]/text()')[0],
                                  [
                                      r".*proceedings of the\s*([a-zA-Z]{2,})[\s'-]*(\d{4}|\d{2})\s+"
@@ -156,10 +167,34 @@ class WorkshopPageParser(Parser):
         except IndexError as ex:
             raise DataNotFound(ex)
         self.data['acronym'] = colocated.group(1).strip()
-        self.data['year'] = '20' + colocated.group(2).strip()[-2:]
-        # print self.task.url
-        # print self.data['acronym']
-        # print self.data['year']
+        self.data['year'] = extract_year(colocated.group(2))
+
+        self.end_template()
+
+    def parse_template_3(self):
+        """
+        Examples:
+            - http://ceur-ws.org/Vol-951/
+        """
+        self.begin_template()
+        header = ' '.join(self.grab.tree.xpath(r'/html/body//*[following-sibling::*[contains(., "Edited by")] '
+                                              r'and not(self::table)]/descendant-or-self::*/text()'))
+        try:
+            colocated = self.rex(header, [
+                r".*(in\s+conjun?ction|co[l-]?located)\s+with.*conference.*\(\s*([a-zA-Z]{2,})[-'\s]*(\d{4}|\d{2})\s*\).*",
+                r".*(proceedings\s+of\s+the)\s+([a-zA-Z]{2,})[\s'-]*(\d{4}|\d{2})\s+workshop.*",
+                r".*(workshop\s+at\s+|a\s+workshop\s+of\s+).*\(\s*([a-zA-Z-]{2,})[\s'-]*(\d{4}|\d{2})\s*\).*",
+                r".*(proceedings\s+of).*\(.*at\s+([a-zA-Z]{2,})[\s'-]*(\d{4}|\d{2})\).*",
+                r".*(co-located\s+with|a\s+workshop\s+of).*conference[\s,]+([a-zA-Z]{3,})[\s'-]*(\d{4}|\d{2}).*"
+            ], re.IGNORECASE | re.DOTALL)
+        except DataNotFound as ex:
+            print header
+            raise ex
+
+        self.data['acronym'] = colocated.group(2).strip()
+        self.data['year'] = extract_year(colocated.group(3))
+
+        self.end_template()
 
     def write(self):
         triples = []
