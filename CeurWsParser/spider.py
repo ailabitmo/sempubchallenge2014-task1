@@ -53,7 +53,6 @@ class CEURSpider(Spider):
                     p = parser(grab, task, self.repo)
                     try:
                         p.parse()
-                        p.write()
                     except Exception as ex:
                         print "[TASK %s][PARSER %s] Error: %s" % (task.url, parser, ex)
                         import traceback

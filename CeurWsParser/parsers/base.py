@@ -1,6 +1,7 @@
 import inspect
 
 from grab.error import DataNotFound
+from grab.tools import rex
 
 
 class NoTemplateError(Exception):
@@ -8,11 +9,16 @@ class NoTemplateError(Exception):
 
 
 class Parser:
-    def __init__(self, grab, task, graph):
+    def __init__(self, grab, task, graph, failonerror=True):
+        """
+        Args:
+            failonerror (boolean): if True, then parse() method doesn't raise NoTemplateError and write() is not called
+        """
         self.grab = grab
         self.task = task
         self.graph = graph
         self.data = {}
+        self.failonerror = failonerror
 
     def parse(self):
         parsed = False
@@ -28,7 +34,10 @@ class Parser:
                     # traceback.print_exc()
                     pass
         if not parsed:
-            raise NoTemplateError("%s" % self.task.url)
+            if self.failonerror:
+                raise NoTemplateError("%s" % self.task.url)
+        else:
+            self.write()
 
     def write(self):
         raise Exception("Method doesn't have implementation!")
@@ -44,3 +53,20 @@ class Parser:
             self.graph.add(triples)
         else:
             raise Exception("%s is wrong parameter! Should be a list of tuples or a tuple" % repr(triples))
+
+    def rex(self, body, patterns, flags=0, default=rex.NULL):
+        result = None
+        lastexception = DataNotFound()
+        found = False
+        for pattern in patterns:
+            try:
+                result = rex.rex(body, pattern, flags, default)
+                found = True
+                if not result:
+                    break
+            except DataNotFound as dnf:
+                lastexception = dnf
+        if found:
+            return result
+        else:
+            raise lastexception

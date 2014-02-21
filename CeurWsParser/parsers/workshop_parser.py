@@ -111,34 +111,53 @@ class WorkshopSummaryParser(Parser):
 
 
 class WorkshopPageParser(Parser):
+    def __init__(self, grab, task, graph):
+        Parser.__init__(self, grab, task, graph, failonerror=False)
+
     def parse_template_1(self):
+        """
+        Examples:
+            - http://ceur-ws.org/Vol-1008/
+            - http://ceur-ws.org/Vol-1081/
+            - http://ceur-ws.org/Vol-1085/
+        """
         self.data['volume_number'] = extract_volume_number(self.task.url)
         try:
+            print self.grab.tree.xpath('//span[@class="CEURCOLOCATED"]/text()')[0]
             colocated = rex.rex(self.grab.tree.xpath('//span[@class="CEURCOLOCATED"]/text()')[0],
-                                r'([a-zA-Z\s*]+)\s*(\d{4})|([a-zA-Z\s*]+)\s*\'?(\d{2})')
+                                r'([a-zA-Z\s*]+)[\s\']*(\d{4}|\d{2})', re.I)
         except IndexError as ex:
             raise DataNotFound(ex)
-        if colocated.group(1) and colocated.group(2):
-            self.data['acronym'] = colocated.group(1).strip()
-            self.data['year'] = colocated.group(2).strip()
-        elif colocated.group(3) and colocated.group(4):
-            self.data['acronym'] = colocated.group(3).strip()
-            self.data['year'] = '20' + colocated.group(4).strip()
-        else:
-            raise DataNotFound()
+        self.data['acronym'] = colocated.group(1).strip()
+        self.data['year'] = '20' + colocated.group(2).strip()[-2:]
+        # print self.task.url
         # print self.data['acronym']
         # print self.data['year']
 
     def parse_template_2(self):
+        """
+        Examples:
+            - http://ceur-ws.org/Vol-996/
+            - http://ceur-ws.org/Vol-937/
+            - http://ceur-ws.org/Vol-838/
+            - http://ceur-ws.org/Vol-840/
+            - http://ceur-ws.org/Vol-859/
+        """
         self.data['volume_number'] = extract_volume_number(self.task.url)
         try:
-            colocated = rex.rex(self.grab.tree.xpath('//span[@class="CEURFULLTITLE"]/text()')[0],
-                                r'.*proceedings of the ([a-zA-Z]+)(\d{4}) Workshop.*',
-                                re.I)
+            print self.grab.tree.xpath('//span[@class="CEURFULLTITLE"]/text()')[0]
+            colocated = self.rex(self.grab.tree.xpath('//span[@class="CEURFULLTITLE"]/text()')[0],
+                                 [
+                                     r".*proceedings of the\s*([a-zA-Z]{2,})[\s'-]*(\d{4}|\d{2})\s+"
+                                     r"(workshop|conference|posters).*",
+                                     r".*at\s+([a-zA-Z]{2,})[\s'-]*(\d{4}|\d{2})\)+",
+                                     r"^([a-zA-Z]{2,})[\s'-]*(\d{2}|\d{4})\s+workshop"
+                                 ], re.I)
         except IndexError as ex:
             raise DataNotFound(ex)
         self.data['acronym'] = colocated.group(1).strip()
-        self.data['year'] = colocated.group(2).strip()
+        self.data['year'] = '20' + colocated.group(2).strip()[-2:]
+        # print self.task.url
         # print self.data['acronym']
         # print self.data['year']
 
