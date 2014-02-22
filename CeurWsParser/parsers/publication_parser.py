@@ -20,8 +20,7 @@ class PublicationParser(Parser):
         triples = []
         proceedings = URIRef(self.data['workshop'])
         for publication in self.data['publications']:
-            resource = URIRef(config.id['publication']
-                              + urllib.quote('ceus-ws-' + self.data['volume_number'] + '-' + publication['name'].encode('utf-8')))
+            resource = URIRef('%s#%s' % (self.data['workshop'], publication['file_name']))
             triples.append((proceedings, DCTERMS.hasPart, resource))
             triples.append((resource, RDF.type, FOAF.Document))
             triples.append((resource, DCTERMS.partOf, proceedings))
@@ -51,6 +50,7 @@ class PublicationParser(Parser):
                     editors.append(publication_editor_name)
                 publication_object = {
                     'name': publication_name,
+                    'file_name': publication_link.rsplit('.pdf')[0],
                     'link': self.task.url + publication_link,
                     'editors': editors
                 }
@@ -77,6 +77,7 @@ class PublicationParser(Parser):
                         editors.append(publication_editor_name.strip())
                 publication_object = {
                     'name': publication_name,
+                    'file_name': publication_link.rsplit('.pdf')[0],
                     'link': self.task.url + publication_link,
                     'editors': editors
                 }
@@ -109,6 +110,7 @@ class PublicationParser(Parser):
 
                 publication_object = {
                     'name': publication_name,
+                    'file_name': publication_link.rsplit('.pdf')[0],
                     'link': self.task.url + publication_link,
                     'editors': editors
                 }
