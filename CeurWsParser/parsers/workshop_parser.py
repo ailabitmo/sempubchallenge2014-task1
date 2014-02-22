@@ -91,7 +91,7 @@ class WorkshopSummaryParser(Parser):
         triples = []
         for workshop in self.data['workshops']:
             resource = create_workshop_uri(workshop['volume_number'])
-            proceedings = URIRef(config.id['proceedings'] + workshop['volume_number'])
+            proceedings = URIRef(workshop['url'])
             triples.append((resource, RDF.type, BIBO.Workshop))
             triples.append((resource, RDFS.label, Literal(workshop['label'], datatype=XSD.string)))
             triples.append((proceedings, BIBO.presentedAt, resource))

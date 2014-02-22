@@ -18,10 +18,10 @@ class PublicationParser(Parser):
     def write(self):
         print "Parse done %s. Count of publications: %s" % (self.task.url, len(self.data['publications']))
         triples = []
-        proceedings = URIRef(config.id['proceedings'] + self.data['volume_number'])
+        proceedings = URIRef(self.data['workshop'])
         for publication in self.data['publications']:
             resource = URIRef(config.id['publication']
-                              + urllib.quote('ceus-ws-' + self.data['volume_number'] + '-' + publication['name']))
+                              + urllib.quote('ceus-ws-' + self.data['volume_number'] + '-' + publication['name'].encode('utf-8')))
             triples.append((proceedings, DCTERMS.hasPart, resource))
             triples.append((resource, RDF.type, FOAF.Document))
             triples.append((resource, DCTERMS.partOf, proceedings))

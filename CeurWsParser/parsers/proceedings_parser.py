@@ -27,8 +27,8 @@ class ProceedingsSummaryParser(Parser):
                     r'(.*)(\nEdited\s*by\s*:\s*)(.*)(\nSubmitted\s*by\s*:\s*)(.*)(\nPublished\s*on\s*CEUR-WS:\s*)(.*)(\nONLINE)(.*)',
                     re.I | re.M | re.S)
 
-                proceedings['label'] = re.sub(r'\n', '', summary_match.group(1))
-                proceedings['editors'] = re.split(r",+\s*", summary_match.group(3))
+                proceedings['label'] = re.sub(r'\n', '', text.normalize_space(summary_match.group(1), ' \n'))
+                proceedings['editors'] = re.split(r",+\s*", text.normalize_space(summary_match.group(3)))
                 proceedings['submission_date'] = datetime.strptime(text.normalize_space(summary_match.group(7), ' \n'),
                                                                    '%d-%b-%Y')
 
@@ -42,7 +42,7 @@ class ProceedingsSummaryParser(Parser):
     def write(self):
         triples = []
         for proceedings in self.data['proceedings_list']:
-            resource = URIRef(config.id['proceedings'] + proceedings['volume_number'])
+            resource = URIRef(proceedings['url'])
             triples.append((resource, RDF.type, SWRC.Proceedings))
             triples.append((resource, RDFS.label, Literal(proceedings['label'], datatype=XSD.string)))
             triples.append((resource, FOAF.homepage, Literal(proceedings['url'], datatype=XSD.anyURI)))
