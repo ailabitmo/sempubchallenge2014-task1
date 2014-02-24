@@ -6,10 +6,11 @@ import traceback
 
 from rdflib import Graph, URIRef, Literal
 from rdflib.plugins.stores import sparqlstore
-from rdflib.namespace import FOAF, DCTERMS
+from rdflib.namespace import FOAF, DCTERMS, DC
+from rdflib.query import ResultRow
 
 from CeurWsParser import config
-from CeurWsParser.namespaces import SWRC, BIBO
+from CeurWsParser.namespaces import SWRC, BIBO, TIMELINE
 
 
 QUERY_FILENAME = 'query.sparql'
@@ -21,7 +22,14 @@ def topython(term):
     if isinstance(term, URIRef):
         return term.n3()
     elif isinstance(term, Literal):
-        return term.toPython()
+        return topython(term.toPython())
+    elif isinstance(term, bool):
+        if term:
+            return "true"
+        else:
+            return "false"
+    else:
+        return term
 
 
 def read_csv(utf8_data, dialect=csv.excel, **kwargs):
@@ -34,7 +42,10 @@ def read_csv(utf8_data, dialect=csv.excel, **kwargs):
 
 def print_list(l):
     for row in l:
-        print ', '.join(map(repr, row))
+        if isinstance(row, list):
+            print ', '.join(map(repr, row))
+        else:
+            print row
 
 
 def main():
@@ -48,6 +59,8 @@ def main():
     graph.bind('swrc', SWRC)
     graph.bind('bibo', BIBO)
     graph.bind('dcterms', DCTERMS)
+    graph.bind('dc', DC)
+    graph.bind('timeline', TIMELINE)
 
     print "Configured a SPARQLStore"
 
@@ -74,7 +87,8 @@ def main():
                     for row in expected:
                         if row not in results:
                             print "[TEST %s] [%s] not found!" % (f, ', '.join(map(repr, row)))
-                            #print_list(results)
+                            print "[TEST %s] Query results:" % f
+                            print_list(results)
                             passed = False
                             break
 

@@ -42,9 +42,9 @@ class WorkshopSummaryParser(Parser):
 
                 time_match_1 = rex.rex(title, r'.*,\s*([a-zA-Z]+)[,\s]*(\d{1,2})[\w\s]*,\s*(\d{4})', re.I,
                                        default=None)
-                time_match_2 = rex.rex(title, r'.*,\s*([a-zA-Z]+)[,\s]*(\d{1,2})[\w\s]*-\s*(\d{1,2})[\w\s,]*(\d{4})',
-                                       re.I,
-                                       default=None)
+                time_match_2 = rex.rex(title,
+                                       r'.*,\s*([a-zA-Z]{3,})[,\.\s]*(\d{1,2})[th\s]*-\s*(\d{1,2})[\w\s,]*(\d{4})',
+                                       re.I, default=None)
                 time_match_3 = rex.rex(title, r'.*,\s*([a-zA-Z]+)\s*(\d+)\s*-\s*([a-zA-Z]+)\s*(\d+)\s*,\s*(\d{4})',
                                        re.I,
                                        default=None)
@@ -57,14 +57,12 @@ class WorkshopSummaryParser(Parser):
                         pass
                 elif time_match_2:
                     try:
-                        workshop['time'] = [
-                            datetime.strptime(
-                                time_match_2.group(1) + "-" + time_match_2.group(2) + "-" + time_match_2.group(4),
-                                '%B-%d-%Y'),
-                            datetime.strptime(
-                                time_match_2.group(1) + "-" + time_match_2.group(3) + "-" + time_match_2.group(4),
-                                '%B-%d-%Y')
-                        ]
+                        month = time_match_2.group(1).strip()[0:3]
+                        start = datetime.strptime(month + "-" + time_match_2.group(2) + "-" + time_match_2.group(4),
+                                                  '%b-%d-%Y')
+                        end = datetime.strptime(month + "-" + time_match_2.group(3) + "-" + time_match_2.group(4),
+                                                '%b-%d-%Y')
+                        workshop['time'] = [start, end]
                     except:
                         pass
                 elif time_match_3:
@@ -178,7 +176,7 @@ class WorkshopPageParser(Parser):
         """
         self.begin_template()
         header = ' '.join(self.grab.tree.xpath(r'/html/body//*[following-sibling::*[contains(., "Edited by")] '
-                                              r'and not(self::table)]/descendant-or-self::*/text()'))
+                                               r'and not(self::table)]/descendant-or-self::*/text()'))
         colocated = self.rex(header, [
             r".*(in\s+conjun?ction|co[l-]?located)\s+with.*conference.*\(\s*([a-zA-Z]{2,})[-'\s]*(\d{4}|\d{2})\s*\).*",
             r".*(proceedings\s+of\s+the)\s+([a-zA-Z]{2,})[\s'-]*(\d{4}|\d{2})\s+workshop.*",
