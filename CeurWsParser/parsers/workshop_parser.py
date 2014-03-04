@@ -9,7 +9,7 @@ from rdflib.namespace import RDF, RDFS, XSD
 
 from base import Parser
 from CeurWsParser import config
-from CeurWsParser.namespaces import BIBO, TIMELINE, SWC
+from CeurWsParser.namespaces import BIBO, TIMELINE, SWC, SWRC
 
 
 def extract_volume_number(url):
@@ -24,35 +24,70 @@ def create_workshop_uri(volume_number):
     return URIRef(config.id['workshop'] + volume_number)
 
 
+def tonumber(string):
+    if isinstance(string, basestring):
+        if string.lower() == 'first':
+            return 1
+        elif string.lower() == 'second':
+            return 2
+        elif string.lower() == 'third':
+            return 3
+        elif string.lower() == 'forth' or string.lower() == 'fourth':
+            return 4
+        elif string.lower() == 'fifth':
+            return 5
+    return string
+
+
 class WorkshopSummaryParser(Parser):
+    def __init__(self, grab, task, graph):
+        Parser.__init__(self, grab, task, graph, failonerror=True)
+
     def parse_template_main(self):
         workshops = []
         tr = self.grab.tree.xpath('/html/body/table[last()]/tr[td]')
         for i in range(0, len(tr), 2):
             href = tr[i].find('.//td[last()]//a[@href]')
-            if href.get('href') in config.input_urls:
+            if href.get('href') in config.input_urls or len(config.input_urls) == 1:
                 workshop = {}
                 summary = tr[i + 1].find('.//td[last()]').text_content()
-                title = rex.rex(summary, r'(.*)Edited\s*by.*', re.I | re.S).group(1)
+                try:
+                    title = rex.rex(summary, r'(.*)Edited\s*by.*', re.I | re.S).group(1)
+                except DataNotFound as dnf:
+                    print '[WORKSHOP %s] Summary information not found!' % href.get('href')
+                    raise dnf
 
                 workshop['volume_number'] = extract_volume_number(href.get('href'))
                 workshop['label'] = href.text
                 workshop['url'] = href.get('href')
                 workshop['time'] = []
+                try:
+                    workshop['edition'] = tonumber(
+                        rex.rex(title,
+                                r'.*Proceedings(\s*of)?(\s*the)?\s*(\d{1,}|first|second|third|forth|fourth|fifth)[thrd]*'
+                                r'.*Workshop.*',
+                                re.I).group(3))
+                except:
+                    #'edition' property is optional
+                    pass
 
-                time_match_1 = rex.rex(title, r'.*,\s*([a-zA-Z]+)[,\s]*(\d{1,2})[\w\s]*,\s*(\d{4})', re.I,
-                                       default=None)
+                time_match_1 = rex.rex(title,
+                                       r'.*,\s*(jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)[a-z]*[,\s]*'
+                                       r'(\d{1,2})[\w\s]*,\s*(\d{4}).*',
+                                       re.I, default=None)
                 time_match_2 = rex.rex(title,
                                        r'.*,\s*([a-zA-Z]{3,})[,\.\s]*(\d{1,2})[th\s]*-\s*(\d{1,2})[\w\s,]*(\d{4})',
                                        re.I, default=None)
                 time_match_3 = rex.rex(title, r'.*,\s*([a-zA-Z]+)\s*(\d+)\s*-\s*([a-zA-Z]+)\s*(\d+)\s*,\s*(\d{4})',
                                        re.I,
                                        default=None)
+                time_match_4 = rex.rex(title, r'.*,\s*(\d{1,2})\s+([a-zA-Z]{3,}),\s*(\d{4}).*', re.I | re.S,
+                                       default=None)
                 if time_match_1:
                     try:
                         workshop['time'] = datetime.strptime(
                             time_match_1.group(1) + "-" + time_match_1.group(2) + "-" + time_match_1.group(3),
-                            '%B-%d-%Y')
+                            '%b-%d-%Y')
                     except:
                         pass
                 elif time_match_2:
@@ -77,6 +112,13 @@ class WorkshopSummaryParser(Parser):
                         ]
                     except:
                         pass
+                elif time_match_4:
+                    try:
+                        workshop['time'] = datetime.strptime(
+                            time_match_4.group(2) + "-" + time_match_4.group(1) + "-" + time_match_4.group(3),
+                            '%B-%d-%Y')
+                    except:
+                        pass
 
                 workshops.append(workshop)
 
@@ -93,6 +135,8 @@ class WorkshopSummaryParser(Parser):
             triples.append((resource, RDF.type, BIBO.Workshop))
             triples.append((resource, RDFS.label, Literal(workshop['label'], datatype=XSD.string)))
             triples.append((proceedings, BIBO.presentedAt, resource))
+            if 'edition' in workshop:
+                triples.append((resource, SWRC.edition, Literal(workshop['edition'], datatype=XSD.integer)))
 
             if isinstance(workshop['time'], list) and len(workshop['time']) > 0:
                 triples.append((

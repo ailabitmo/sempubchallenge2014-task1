@@ -1,6 +1,7 @@
 from datetime import datetime
 import re
 import urllib
+from django.utils.unittest.case import _TypeEqualityDict
 
 from grab.tools import rex, text
 from grab.error import DataNotFound
@@ -58,3 +59,14 @@ class ProceedingsSummaryParser(Parser):
                 triples.append((agent, DC.creator, resource))
 
         self.write_triples(triples)
+
+
+class EditorAffiliationParser(Parser):
+    def parse_template_main(self):
+        # editors = ''.join(self.grab.tree.xpath(r'/html/body//*[preceding-sibling::*[contains(., "Edited by")] '
+        #                      r'and following-sibling::*[@class="CEURTOC"]]/descendant-or-self::*/text()'))
+        # print editors
+        pass
+
+    def write(self):
+        pass
