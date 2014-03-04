@@ -15,6 +15,10 @@ from CeurWsParser import config
 
 
 class PublicationParser(Parser):
+    def begin_template(self):
+        self.data['workshop'] = self.task.url
+        self.data['volume_number'] = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', self.task.url).group(1)
+
     def write(self):
         print "Parse done %s. Count of publications: %s" % (self.task.url, len(self.data['publications']))
         triples = []
@@ -36,9 +40,8 @@ class PublicationParser(Parser):
         self.write_triples(triples)
 
     def parse_template_1(self):
+        self.begin_template()
         publications = []
-        self.data['workshop'] = self.task.url
-        self.data['volume_number'] = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', self.task.url).group(1)
 
         for publication in self.grab.tree.xpath('//div[@class="CEURTOC"]/*[@rel="dcterms:hasPart"]/li'):
             try:
@@ -63,25 +66,31 @@ class PublicationParser(Parser):
         self.check_for_completeness()
 
     def parse_template_2(self):
-        publications = []
-        self.data['workshop'] = self.task.url
-        self.data['volume_number'] = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', self.task.url).group(1)
+        """
+        Examples:
+            - http://ceur-ws.org/Vol-1008/
+        """
 
-        for publication in self.grab.tree.xpath('//div[@class="CEURTOC"]//li'):
+        self.begin_template()
+        publications = []
+
+        for element in self.grab.tree.xpath('/html/body//*[@class="CEURTOC"]//*[a and '
+                                                'descendant-or-self::*[@class="CEURAUTHORS"] and '
+                                                'descendant-or-self::*[@class="CEURTITLE"]]'):
             try:
-                publication_name = publication.find_class('CEURTITLE')[0].text
-                publication_link = publication.find('a').get('href')
+                name = element.find_class('CEURTITLE')[0].text
+                link = element.find('a').get('href')
                 editors = []
-                for publication_editor in publication.find_class('CEURAUTHORS'):
-                    for publication_editor_name in publication_editor.text_content().split(","):
-                        editors.append(publication_editor_name.strip())
+                for editor in element.find_class('CEURAUTHORS'):
+                    for editor_name in editor.text_content().split("[,\s]+"):
+                        editors.append(editor_name.strip())
                 publication_object = {
-                    'name': publication_name,
-                    'file_name': publication_link.rsplit('.pdf')[0],
-                    'link': self.task.url + publication_link,
+                    'name': name,
+                    'file_name': link.rsplit('.pdf')[0],
+                    'link': self.task.url + link,
                     'editors': editors
                 }
-                if self.check_for_workshop_paper(publication_name):
+                if self.check_for_workshop_paper(name):
                     publications.append(publication_object)
             except Exception as ex:
                 raise DataNotFound(ex)
@@ -90,9 +99,8 @@ class PublicationParser(Parser):
         self.check_for_completeness()
 
     def parse_template_3(self):
+        self.begin_template()
         publications = []
-        self.data['workshop'] = self.task.url
-        self.data['volume_number'] = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', self.task.url).group(1)
 
         for publication in self.grab.tree.xpath('//li'):
             try:

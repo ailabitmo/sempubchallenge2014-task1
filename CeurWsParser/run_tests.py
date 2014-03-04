@@ -3,11 +3,11 @@
 import os
 import csv
 import traceback
+from csv import Dialect
 
-from rdflib import Graph, URIRef, Literal
+from rdflib import Graph, Literal, URIRef
 from rdflib.plugins.stores import sparqlstore
 from rdflib.namespace import FOAF, DCTERMS, DC
-from rdflib.query import ResultRow
 
 from CeurWsParser import config
 from CeurWsParser.namespaces import SWRC, BIBO, TIMELINE
@@ -18,22 +18,17 @@ EXPECTED_FILENAME = 'expected.output'
 TESTS_ROOT_DIR = 'tests'
 
 
-def topython(term):
-    if isinstance(term, URIRef):
-        return term.n3()
-    elif isinstance(term, Literal):
-        return topython(term.toPython())
-    elif isinstance(term, bool):
-        if term:
-            return "true"
-        else:
-            return "false"
-    else:
-        return term
+def topython(graph, term):
+    if isinstance(term, Literal):
+        if term.datatype.eq(URIRef("http://www.w3.org/2001/XMLSchema#string")):
+            return u'"%s"' % term.value
+        elif term.datatype.eq(URIRef("http://www.w3.org/2001/XMLSchema#boolean")):
+            return u'"true"' if term.value else u'"false"'
+    return term.n3(graph.namespace_manager)
 
 
-def read_csv(utf8_data, dialect=csv.excel, **kwargs):
-    csv_reader = csv.reader(utf8_data, dialect=dialect, **kwargs)
+def read_csv(utf8_data, dialect=Dialect.delimiter):
+    csv_reader = csv.reader(utf8_data, dialect=dialect, quoting=csv.QUOTE_NONE)
     lines = []
     for row in csv_reader:
         lines.append([unicode(cell, 'utf-8') for cell in row])
@@ -73,7 +68,7 @@ def main():
 
             results = []
             for r in result:
-                result_line = map(topython, r)
+                result_line = [topython(graph, x) for x in r]
                 results.append(result_line)
 
             print "[TEST %s] Number of results: %s" % (f, len(results))
