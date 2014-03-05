@@ -62,10 +62,16 @@ class ProceedingsSummaryParser(Parser):
 
 
 class EditorAffiliationParser(Parser):
+    # def __init__(self, grab, task, graph):
+    #     Parser.__init__(self, grab, task, graph)
+    #     self.output = open('affiliations.txt', 'a')
+
     def parse_template_main(self):
-        # editors = ''.join(self.grab.tree.xpath(r'/html/body//*[preceding-sibling::*[contains(., "Edited by")] '
-        #                      r'and following-sibling::*[@class="CEURTOC"]]/descendant-or-self::*/text()'))
-        # print editors
+        # editors = '\n'.join(self.grab.tree.xpath(r'/html/body//text()[preceding::*[contains(., "Edited by")] and'
+        #                                          r' following::*[contains(.,"Table of Contents") or @class="CEURTOC"]]'))
+        # self.output.write("%s\n" % self.task.url)
+        # self.output.write(editors.encode('utf-8'))
+        # self.output.write('\n====\n')
         pass
 
     def write(self):
