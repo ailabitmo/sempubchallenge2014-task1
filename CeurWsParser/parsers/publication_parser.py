@@ -5,19 +5,29 @@ import re
 import urllib
 
 from grab.error import DataNotFound
+from grab.tools import rex
 from rdflib import URIRef, Literal
 from rdflib.namespace import RDF, RDFS, FOAF, DCTERMS, DC, XSD
 from PyPDF2 import PdfFileReader
 
 from CeurWsParser.parsers.base import Parser
-from CeurWsParser.namespaces import SWRC, BIBO
+from CeurWsParser.namespaces import SWRC, BIBO, SWC
 from CeurWsParser import config
 
 
 class PublicationParser(Parser):
     def begin_template(self):
         self.data['workshop'] = self.task.url
-        self.data['volume_number'] = re.match(r'.*http://ceur-ws.org/Vol-(\d+).*', self.task.url).group(1)
+        self.data['volume_number'] = rex.rex(self.task.url, r'.*http://ceur-ws.org/Vol-(\d+).*').group(1)
+
+    def end_template(self):
+        self.check_for_completeness()
+
+    def is_invited(self, publication):
+        if rex.rex(publication['link'], r'.*(keynote|invite).*', re.I, default=None):
+            return True
+        else:
+            return False
 
     def get_num_of_pages(self, link, name):
         try:
@@ -26,7 +36,6 @@ class PublicationParser(Parser):
             pdf = PdfFileReader(file_name)
             return pdf.getNumPages()
         except:
-            #traceback.print_exc()
             return None
 
     def write(self):
@@ -41,6 +50,8 @@ class PublicationParser(Parser):
             triples.append((resource, RDF.type, SWRC.InProceedings))
             triples.append((resource, RDFS.label, Literal(publication['name'], datatype=XSD.string)))
             triples.append((resource, FOAF.homepage, Literal(publication['link'], datatype=XSD.anyURI)))
+            if publication['is_invited']:
+                triples.append((resource, RDF.type, SWC.InvitedPaper))
             if publication['num_of_pages']:
                 triples.append((resource, BIBO.numPages, Literal(publication['num_of_pages'], datatype=XSD.integer)))
             for editor in publication['editors']:
@@ -71,13 +82,14 @@ class PublicationParser(Parser):
                     'editors': editors,
                     'num_of_pages': self.get_num_of_pages(self.task.url + publication_link, file_name)
                 }
+                publication_object['is_invited'] = self.is_invited(publication_object)
                 if self.check_for_workshop_paper(publication_object):
                     publications.append(publication_object)
             except Exception as ex:
                 raise DataNotFound(ex)
 
         self.data['publications'] = publications
-        self.check_for_completeness()
+        self.end_template()
 
     def parse_template_2(self):
         """
@@ -95,9 +107,8 @@ class PublicationParser(Parser):
                 name = element.find_class('CEURTITLE')[0].text
                 link = element.find('a').get('href')
                 editors = []
-                for editor in element.find_class('CEURAUTHORS'):
-                    for editor_name in editor.text_content().split("[,\s]+"):
-                        editors.append(editor_name.strip())
+                for editor_name in element.find_class('CEURAUTHORS')[0].text_content().split(","):
+                    editors.append(editor_name.strip())
                 file_name = link.rsplit('.pdf')[0].rsplit('/')[-1]
                 publication_object = {
                     'name': name,
@@ -106,13 +117,14 @@ class PublicationParser(Parser):
                     'editors': editors,
                     'num_of_pages': self.get_num_of_pages(self.task.url + link, file_name)
                 }
+                publication_object['is_invited'] = self.is_invited(publication_object)
                 if self.check_for_workshop_paper(publication_object):
                     publications.append(publication_object)
             except Exception as ex:
                 raise DataNotFound(ex)
 
         self.data['publications'] = publications
-        self.check_for_completeness()
+        self.end_template()
 
     def parse_template_3(self):
         self.begin_template()
@@ -139,13 +151,14 @@ class PublicationParser(Parser):
                     'editors': editors,
                     'num_of_pages': self.get_num_of_pages(self.task.url + link, file_name)
                 }
+                publication_object['is_invited'] = self.is_invited(publication_object)
                 if self.check_for_workshop_paper(publication_object):
                     publications.append(publication_object)
             except Exception as ex:
                 raise DataNotFound(ex)
 
         self.data['publications'] = publications
-        self.check_for_completeness()
+        self.end_template()
 
     def check_for_completeness(self):
         if len(self.data['publications']) == 0:
@@ -153,13 +166,11 @@ class PublicationParser(Parser):
             raise DataNotFound()
 
     def check_for_workshop_paper(self, publication):
-        if publication['name'].lower() == 'preface' \
-                or publication['name'].lower() == 'overview' \
-                or publication['name'].lower() == 'introduction':
+        if rex.rex(publication['name'], r'.*(preface|overview|introduction).*', re.I, default=None):
             return False
         if not publication['link'].endswith('.pdf'):
             return False
-        return True  # def parse_publications(repo, grab, task):
+        return True
 
 
 if __name__ == '__main__':
