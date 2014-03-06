@@ -9,7 +9,8 @@ from rdflib.namespace import RDF, RDFS, XSD
 
 from base import Parser
 from CeurWsParser import config
-from CeurWsParser.namespaces import BIBO, TIMELINE, SWC, SWRC
+from CeurWsParser.parsers import utils
+from CeurWsParser.namespaces import BIBO, TIMELINE, SWC, SWRC, SKOS
 
 
 def extract_volume_number(url):
@@ -58,68 +59,18 @@ class WorkshopSummaryParser(Parser):
                     raise dnf
 
                 workshop['volume_number'] = extract_volume_number(href.get('href'))
-                workshop['label'] = href.text
+                workshop['label'] = href.text.replace('.', '')
                 workshop['url'] = href.get('href')
-                workshop['time'] = []
+                workshop['time'] = utils.parse_date(title)
                 try:
                     workshop['edition'] = tonumber(
                         rex.rex(title,
                                 r'.*Proceedings(\s*of)?(\s*the)?\s*(\d{1,}|first|second|third|forth|fourth|fifth)[thrd]*'
                                 r'.*Workshop.*',
-                                re.I).group(3))
+                                re.I, default=None).group(3))
                 except:
                     #'edition' property is optional
                     pass
-
-                time_match_1 = rex.rex(title,
-                                       r'.*,\s*(jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)[a-z]*[,\s]*'
-                                       r'(\d{1,2})[\w\s]*,\s*(\d{4}).*',
-                                       re.I, default=None)
-                time_match_2 = rex.rex(title,
-                                       r'.*,\s*([a-zA-Z]{3,})[,\.\s]*(\d{1,2})[th\s]*-\s*(\d{1,2})[\w\s,]*(\d{4})',
-                                       re.I, default=None)
-                time_match_3 = rex.rex(title, r'.*,\s*([a-zA-Z]+)\s*(\d+)\s*-\s*([a-zA-Z]+)\s*(\d+)\s*,\s*(\d{4})',
-                                       re.I,
-                                       default=None)
-                time_match_4 = rex.rex(title, r'.*,\s*(\d{1,2})\s+([a-zA-Z]{3,}),\s*(\d{4}).*', re.I | re.S,
-                                       default=None)
-                if time_match_1:
-                    try:
-                        workshop['time'] = datetime.strptime(
-                            time_match_1.group(1) + "-" + time_match_1.group(2) + "-" + time_match_1.group(3),
-                            '%b-%d-%Y')
-                    except:
-                        pass
-                elif time_match_2:
-                    try:
-                        month = time_match_2.group(1).strip()[0:3]
-                        start = datetime.strptime(month + "-" + time_match_2.group(2) + "-" + time_match_2.group(4),
-                                                  '%b-%d-%Y')
-                        end = datetime.strptime(month + "-" + time_match_2.group(3) + "-" + time_match_2.group(4),
-                                                '%b-%d-%Y')
-                        workshop['time'] = [start, end]
-                    except:
-                        pass
-                elif time_match_3:
-                    try:
-                        workshop['time'] = [
-                            datetime.strptime(
-                                time_match_3.group(1) + "-" + time_match_3.group(2) + "-" + time_match_3.group(5),
-                                '%B-%d-%Y'),
-                            datetime.strptime(
-                                time_match_3.group(3) + "-" + time_match_3.group(4) + "-" + time_match_3.group(5),
-                                '%B-%d-%Y')
-                        ]
-                    except:
-                        pass
-                elif time_match_4:
-                    try:
-                        workshop['time'] = datetime.strptime(
-                            time_match_4.group(2) + "-" + time_match_4.group(1) + "-" + time_match_4.group(3),
-                            '%B-%d-%Y')
-                    except:
-                        pass
-
                 workshops.append(workshop)
 
         self.data['workshops'] = workshops
@@ -138,7 +89,7 @@ class WorkshopSummaryParser(Parser):
             if 'edition' in workshop:
                 triples.append((resource, SWRC.edition, Literal(workshop['edition'], datatype=XSD.integer)))
 
-            if isinstance(workshop['time'], list) and len(workshop['time']) > 0:
+            if workshop['time'] and len(workshop['time']) > 1:
                 triples.append((
                     resource,
                     TIMELINE.beginsAtDateTime,
@@ -147,12 +98,43 @@ class WorkshopSummaryParser(Parser):
                     resource,
                     TIMELINE.endsAtDateTime,
                     Literal(workshop['time'][1].strftime('%Y-%m-%d'), datatype=XSD.date)))
-            elif isinstance(workshop['time'], datetime):
+            elif workshop['time'] and len(workshop['time']) > 0:
                 triples.append((
                     resource,
                     TIMELINE.atDate,
-                    Literal(workshop['time'].strftime('%Y-%m-%d'), datatype=XSD.date)))
+                    Literal(workshop['time'][0].strftime('%Y-%m-%d'), datatype=XSD.date)))
+        self.write_triples(triples)
 
+
+class WorkshopRelationsParser(Parser):
+    """
+    Should parser the index page before WorkshopSummaryParser parser, because this parser updates config.input_urls.
+    """
+    def parse_template_main(self):
+        tr = self.grab.tree.xpath('/html/body/table[last()]/tr[td]')
+        self.data['workshops'] = []
+        for i in range(0, len(tr), 2):
+            workshop_url = tr[i].find('.//td[last()]//a[@href]').get('href')
+            if workshop_url in config.input_urls or len(config.input_urls) == 1:
+                related = []
+                for a in tr[i + 1].findall(".//td[1]//a[@href]"):
+                    if len(a.get('href')) > 1:
+                        related.append(a.get('href')[5:])
+                workshop = {
+                    'volume_number': extract_volume_number(workshop_url),
+                    'related': related
+                }
+                self.data['workshops'].append(workshop)
+
+    def write(self):
+        triples = []
+        for workshop in self.data['workshops']:
+            if len(workshop['related']) > 0:
+                resource = create_workshop_uri(workshop['volume_number'])
+                for related in workshop['related']:
+                    config.input_urls.append("http://ceur-ws.org/Vol-%s/" % related)
+                    related_resource = create_workshop_uri(related)
+                    triples.append((resource, SKOS.related, related_resource))
         self.write_triples(triples)
 
 

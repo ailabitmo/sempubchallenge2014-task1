@@ -8,7 +8,8 @@ from grab.tools.logs import default_logging
 import rdflib
 from rdflib.plugins.stores import sparqlstore
 
-from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, PublicationParser
+from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, PublicationParser, \
+    WorkshopRelationsParser
 from CeurWsParser import config
 
 
@@ -20,6 +21,7 @@ mappings = dict(
     },
     parser_mappings={
         'index': [
+            WorkshopRelationsParser,
             WorkshopSummaryParser,
             ProceedingsSummaryParser
         ],
