@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import re
+import os
 
 from grab.spider import Spider
 from grab.tools.logs import default_logging
 import rdflib
-from rdflib.plugins.stores import sparqlstore
 
 from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, PublicationParser, \
     WorkshopRelationsParser
@@ -36,15 +36,16 @@ mappings = dict(
 
 class CEURSpider(Spider):
     def __init__(self):
-        Spider.__init__(self, thread_number=2)
+        Spider.__init__(self, thread_number=5)
         self.setup_grab(timeout=240)
         self.publication_results_done = 0
         self.publication_results_failed = 0
-        self.repo = rdflib.Graph(sparqlstore.SPARQLUpdateStore(
-            queryEndpoint=config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'],
-            update_endpoint=config.sparqlstore['url'] + "/repositories/" +
-                            config.sparqlstore['repository'] + "/statements",
-            context_aware=False))
+        # self.repo = rdflib.Graph(sparqlstore.SPARQLUpdateStore(
+        #     queryEndpoint=config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'],
+        #     update_endpoint=config.sparqlstore['url'] + "/repositories/" +
+        #                     config.sparqlstore['repository'] + "/statements",
+        #     context_aware=False))
+        self.repo = rdflib.Graph(store='default')
 
     def task_initial(self, grab, task):
         print "[TASK %s] started" % task.url
@@ -52,13 +53,19 @@ class CEURSpider(Spider):
             if re.match(url_rex, task.url, re.I):
                 value = mappings['url_mappings'][url_rex]
                 for parser in mappings['parser_mappings'][value]:
-                    p = parser(grab, task, self.repo)
+                    p = parser(grab, task, self.repo, spider=self)
                     try:
                         p.parse()
                     except Exception as ex:
                         print "[TASK %s][PARSER %s] Error: %s" % (task.url, parser, ex)
                         import traceback
                         traceback.print_exc()
+
+    def shutdown(self):
+        Spider.shutdown(self)
+        f = open('rdfdb.xml', 'w')
+        self.repo.serialize(f)
+        self.repo.close()
 
     # def task_workshop(self, grab, task):
     #     try:

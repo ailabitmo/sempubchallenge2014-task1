@@ -1,7 +1,7 @@
 from datetime import datetime
 import re
 import urllib
-from django.utils.unittest.case import _TypeEqualityDict
+import traceback
 
 from grab.tools import rex, text
 from grab.error import DataNotFound
@@ -19,21 +19,25 @@ class ProceedingsSummaryParser(Parser):
         tr = self.grab.tree.xpath('/html/body/table[last()]/tr[td]')
         for i in range(0, len(tr), 2):
             href = tr[i].find('.//td[last()]//a[@href]')
-            if href.get('href') in config.input_urls:
-                proceedings = dict()
-                proceedings['volume_number'] = rex.rex(href.get('href'), r'.*http://ceur-ws.org/Vol-(\d+).*').group(1)
-                proceedings['url'] = href.get('href')
-                summary_match = rex.rex(
-                    tr[i + 1].find('.//td[last()]').text_content(),
-                    r'(.*)(\nEdited\s*by\s*:\s*)(.*)(\nSubmitted\s*by\s*:\s*)(.*)(\nPublished\s*on\s*CEUR-WS:\s*)(.*)(\nONLINE)(.*)',
-                    re.I | re.M | re.S)
+            try:
+                if href.get('href') in config.input_urls or len(config.input_urls) == 1:
+                    proceedings = dict()
+                    proceedings['volume_number'] = rex.rex(href.get('href'), r'.*http://ceur-ws.org/Vol-(\d+).*').group(1)
+                    proceedings['url'] = href.get('href')
+                    summary_match = rex.rex(
+                        tr[i + 1].find('.//td[last()]').text_content(),
+                        r'(.*)(\nEdited\s*by\s*:\s*)(.*)(\nSubmitted\s*by\s*:\s*)(.*)(\nPublished\s*on\s*CEUR-WS:\s*)(.*)(\nONLINE)(.*)',
+                        re.I | re.M | re.S)
 
-                proceedings['label'] = re.sub(r'\n', '', text.normalize_space(summary_match.group(1), ' \n'))
-                proceedings['editors'] = re.split(r",+\s*", text.normalize_space(summary_match.group(3)))
-                proceedings['submission_date'] = datetime.strptime(text.normalize_space(summary_match.group(7), ' \n'),
-                                                                   '%d-%b-%Y')
+                    proceedings['label'] = re.sub(r'\n', '', text.normalize_space(summary_match.group(1), ' \n'))
+                    proceedings['editors'] = re.split(r",+\s*", text.normalize_space(summary_match.group(3)))
+                    proceedings['submission_date'] = datetime.strptime(text.normalize_space(summary_match.group(7), ' \n'),
+                                                                       '%d-%b-%Y')
 
-                proceedings_list.append(proceedings)
+                    proceedings_list.append(proceedings)
+            except:
+                print "[WORKSHOP %s: ProceedingsSummaryParser] Summary information not found!" % href.get('href')
+                #traceback.print_exc()
 
         self.data['proceedings_list'] = proceedings_list
 

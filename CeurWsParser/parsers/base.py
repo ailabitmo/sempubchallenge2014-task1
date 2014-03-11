@@ -9,7 +9,7 @@ class NoTemplateError(Exception):
 
 
 class Parser:
-    def __init__(self, grab, task, graph, failonerror=True):
+    def __init__(self, grab, task, graph, failonerror=True, spider=None):
         """
         Args:
             failonerror (boolean): if True, then parse() method doesn't raise NoTemplateError and write() is not called
@@ -19,6 +19,8 @@ class Parser:
         self.graph = graph
         self.data = {}
         self.failonerror = failonerror
+        self.spider = spider
+        self.step = 1000
 
     def parse(self):
         parsed = False
@@ -45,10 +47,14 @@ class Parser:
     def write_triples(self, triples):
         if isinstance(triples, list):
             for triple in triples:
-                if isinstance(triple, tuple):
-                    self.graph.add(triple)
-                else:
-                    raise Exception("%s should be a tuple" % repr(triple))
+                self.graph.add(triple)
+            # length = len(triples)
+            # print length
+            # if length < self.step:
+            #     self.graph.addN(triples)
+            # else:
+            #     for i in range(0, length, self.step):
+            #         self.graph.addN(triples[i: i + self.step if i + self.step < length else length])
         elif isinstance(triples, tuple):
             self.graph.add(triples)
         else:

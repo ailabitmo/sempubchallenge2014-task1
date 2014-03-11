@@ -1,0 +1,7 @@
+*.txt
+.*
+*.pyc
+*.py~
+config.py
+scripts
+rdfdb.xml

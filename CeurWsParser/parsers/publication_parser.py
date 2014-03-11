@@ -3,6 +3,9 @@
 
 import re
 import urllib
+import os
+import tempfile
+import traceback
 
 from grab.error import DataNotFound
 from grab.tools import rex
@@ -31,12 +34,23 @@ class PublicationParser(Parser):
 
     def get_num_of_pages(self, link, name):
         try:
-            file_name = "/tmp/%s" % name
-            urllib.urlretrieve(link, file_name)
-            pdf = PdfFileReader(file_name)
-            return pdf.getNumPages()
+            if link.endswith('.pdf'):
+                file_name = "%s/%s" % (tempfile.gettempdir(), name)
+                try:
+                    urllib.urlretrieve(link, file_name)
+                    pdf = PdfFileReader(file_name)
+                    nop = pdf.getNumPages()
+                    return nop
+                except:
+                    print "[PublicationParser] %s %s" % (link, name)
+                    traceback.print_exc()
+                    return None
+                finally:
+                        os.remove(file_name)
+            elif link.endswith('.ps'):
+                pass
         except:
-            return None
+            pass
 
     def write(self):
         print "Parse done %s. Count of publications: %s" % (self.task.url, len(self.data['publications']))
@@ -105,7 +119,8 @@ class PublicationParser(Parser):
                                             'descendant-or-self::*[@class="CEURTITLE"]]'):
             try:
                 name = element.find_class('CEURTITLE')[0].text
-                link = element.find('a').get('href')
+                href = element.find('a').get('href')
+                link = href if href.startswith('http://') else self.task.url + href
                 editors = []
                 for editor_name in element.find_class('CEURAUTHORS')[0].text_content().split(","):
                     editors.append(editor_name.strip())
@@ -113,9 +128,9 @@ class PublicationParser(Parser):
                 publication_object = {
                     'name': name,
                     'file_name': file_name,
-                    'link': self.task.url + link,
+                    'link': link,
                     'editors': editors,
-                    'num_of_pages': self.get_num_of_pages(self.task.url + link, file_name)
+                    'num_of_pages': self.get_num_of_pages(link, file_name)
                 }
                 publication_object['is_invited'] = self.is_invited(publication_object)
                 if self.check_for_workshop_paper(publication_object):

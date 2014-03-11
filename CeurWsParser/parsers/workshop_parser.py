@@ -1,8 +1,9 @@
-from datetime import datetime
 import re
 import urllib
+import traceback
 
 from grab.tools import rex
+from grab.spider import Task
 from grab.error import DataNotFound
 from rdflib import URIRef, Literal
 from rdflib.namespace import RDF, RDFS, XSD
@@ -41,37 +42,40 @@ def tonumber(string):
 
 
 class WorkshopSummaryParser(Parser):
-    def __init__(self, grab, task, graph):
-        Parser.__init__(self, grab, task, graph, failonerror=True)
+    def __init__(self, grab, task, graph, spider=None):
+        Parser.__init__(self, grab, task, graph, failonerror=True, spider=spider)
 
     def parse_template_main(self):
         workshops = []
         tr = self.grab.tree.xpath('/html/body/table[last()]/tr[td]')
         for i in range(0, len(tr), 2):
-            href = tr[i].find('.//td[last()]//a[@href]')
-            if href.get('href') in config.input_urls or len(config.input_urls) == 1:
-                workshop = {}
-                summary = tr[i + 1].find('.//td[last()]').text_content()
-                try:
-                    title = rex.rex(summary, r'(.*)Edited\s*by.*', re.I | re.S).group(1)
-                except DataNotFound as dnf:
-                    print '[WORKSHOP %s] Summary information not found!' % href.get('href')
-                    raise dnf
+            try:
+                href = tr[i].find('.//td[last()]//a[@href]')
+                if href.get('href') in config.input_urls or len(config.input_urls) == 1:
+                    workshop = {}
+                    summary = tr[i + 1].find('.//td[last()]').text_content()
+                    try:
+                        title = rex.rex(summary, r'(.*)Edited\s*by.*', re.I | re.S).group(1)
+                    except:
+                        print '[WORKSHOP %s: WorkshopSummaryParser] Summary information not found!' % href.get('href')
+                        continue
 
-                workshop['volume_number'] = extract_volume_number(href.get('href'))
-                workshop['label'] = href.text.replace('.', '')
-                workshop['url'] = href.get('href')
-                workshop['time'] = utils.parse_date(title)
-                try:
-                    workshop['edition'] = tonumber(
-                        rex.rex(title,
-                                r'.*Proceedings(\s*of)?(\s*the)?\s*(\d{1,}|first|second|third|forth|fourth|fifth)[thrd]*'
-                                r'.*Workshop.*',
-                                re.I, default=None).group(3))
-                except:
-                    #'edition' property is optional
-                    pass
-                workshops.append(workshop)
+                    workshop['volume_number'] = extract_volume_number(href.get('href'))
+                    workshop['label'] = href.text.replace('.', '')
+                    workshop['url'] = href.get('href')
+                    workshop['time'] = utils.parse_date(title)
+                    try:
+                        workshop['edition'] = tonumber(
+                            rex.rex(title,
+                                    r'.*Proceedings(\s*of)?(\s*the)?\s*(\d{1,}|first|second|third|forth|fourth|fifth)[thrd]*'
+                                    r'.*Workshop.*',
+                                    re.I, default=None).group(3))
+                    except:
+                        #'edition' property is optional
+                        pass
+                    workshops.append(workshop)
+            except:
+                traceback.print_exc()
 
         self.data['workshops'] = workshops
 
@@ -115,6 +119,8 @@ class WorkshopRelationsParser(Parser):
         self.data['workshops'] = []
         for i in range(0, len(tr), 2):
             workshop_url = tr[i].find('.//td[last()]//a[@href]').get('href')
+            if len(config.input_urls) == 1:
+                self.spider.add_task(Task('initial', url=workshop_url))
             if workshop_url in config.input_urls or len(config.input_urls) == 1:
                 related = []
                 for a in tr[i + 1].findall(".//td[1]//a[@href]"):
@@ -132,15 +138,16 @@ class WorkshopRelationsParser(Parser):
             if len(workshop['related']) > 0:
                 resource = create_workshop_uri(workshop['volume_number'])
                 for related in workshop['related']:
-                    config.input_urls.append("http://ceur-ws.org/Vol-%s/" % related)
+                    if len(config.input_urls) > 1:
+                        config.input_urls.append("http://ceur-ws.org/Vol-%s/" % related)
                     related_resource = create_workshop_uri(related)
                     triples.append((resource, SKOS.related, related_resource))
         self.write_triples(triples)
 
 
 class WorkshopPageParser(Parser):
-    def __init__(self, grab, task, graph):
-        Parser.__init__(self, grab, task, graph, failonerror=False)
+    def __init__(self, grab, task, graph, spider=None):
+        Parser.__init__(self, grab, task, graph, failonerror=False, spider=spider)
 
     def begin_template(self):
         self.data['volume_number'] = extract_volume_number(self.task.url)
