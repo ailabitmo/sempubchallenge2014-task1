@@ -13,7 +13,7 @@ from rdflib import URIRef, Literal
 from rdflib.namespace import RDF, RDFS, FOAF, DCTERMS, DC, XSD
 from PyPDF2 import PdfFileReader
 
-from CeurWsParser.parsers.base import Parser
+from CeurWsParser.parsers.base import Parser, create_proceedings_uri
 from CeurWsParser.namespaces import SWRC, BIBO, SWC
 from CeurWsParser import config
 
@@ -21,18 +21,30 @@ from CeurWsParser import config
 class PublicationParser(Parser):
     def begin_template(self):
         self.data['workshop'] = self.task.url
-        self.data['volume_number'] = rex.rex(self.task.url, r'.*http://ceur-ws.org/Vol-(\d+).*').group(1)
+        self.data['volume_number'] = self.extract_volume_number(self.task.url)
+        proceedings = create_proceedings_uri(self.data['volume_number'])
+        self.data['workshops'] = []
+        for workshop in self.graph.objects(proceedings, BIBO.presentedAt):
+            try:
+                label = self.graph.objects(workshop, BIBO.shortTitle).next()
+                self.data['workshops'].append((workshop, label.toPython()))
+            except StopIteration:
+                pass
+            except:
+                traceback.print_exc()
 
     def end_template(self):
         self.check_for_completeness()
 
-    def is_invited(self, publication):
+    @staticmethod
+    def is_invited(publication):
         if rex.rex(publication['link'], r'.*(keynote|invite).*', re.I, default=None):
             return True
         else:
             return False
 
-    def get_num_of_pages(self, link, name):
+    @staticmethod
+    def get_num_of_pages(link, name):
         try:
             if link.endswith('.pdf'):
                 file_name = "%s/%s" % (tempfile.gettempdir(), name)
@@ -73,6 +85,9 @@ class PublicationParser(Parser):
                 triples.append((agent, RDF.type, FOAF.Agent))
                 triples.append((agent, FOAF.name, Literal(editor, datatype=XSD.string)))
                 triples.append((agent, DC.creator, resource))
+            if 'presentedAt' in publication and len(publication['presentedAt']) > 0:
+                for w in publication['presentedAt']:
+                    triples.append((resource, BIBO.presentedAt, w))
 
         self.write_triples(triples)
 
@@ -133,6 +148,19 @@ class PublicationParser(Parser):
                     'num_of_pages': self.get_num_of_pages(link, file_name)
                 }
                 publication_object['is_invited'] = self.is_invited(publication_object)
+
+                if len(self.data['workshops']) > 1:
+                    try:
+                        session = self.grab.tree.xpath(
+                            '//a[@href="%s"]/preceding::*[@class="CEURSESSION"][1]' % href)[0]
+                        publication_object['presentedAt'] = []
+                        for w in self.data['workshops']:
+                            if w[1] is not None and w[1] in session.text:
+                                publication_object['presentedAt'].append(w[0])
+                    except:
+                        traceback.print_exc()
+                        pass
+
                 if self.check_for_workshop_paper(publication_object):
                     publications.append(publication_object)
             except Exception as ex:

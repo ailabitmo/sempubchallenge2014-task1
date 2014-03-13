@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 
 import re
-import os
 
-from grab.spider import Spider
+from grab.spider import Spider, Task
 from grab.tools.logs import default_logging
 import rdflib
+from rdflib.namespace import FOAF, DC, DCTERMS
 
-from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, PublicationParser, \
-    WorkshopRelationsParser
+from CeurWsParser.namespaces import BIBO, SWRC, TIMELINE, SWC, SKOS
+from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, \
+    PublicationParser, WorkshopRelationsParser
 from CeurWsParser import config
 
 
@@ -36,7 +37,7 @@ mappings = dict(
 
 class CEURSpider(Spider):
     def __init__(self):
-        Spider.__init__(self, thread_number=5)
+        Spider.__init__(self, thread_number=1)
         self.setup_grab(timeout=240)
         self.publication_results_done = 0
         self.publication_results_failed = 0
@@ -46,6 +47,22 @@ class CEURSpider(Spider):
         #                     config.sparqlstore['repository'] + "/statements",
         #     context_aware=False))
         self.repo = rdflib.Graph(store='default')
+        self.repo.bind('foaf', FOAF)
+        self.repo.bind('swc', SWC)
+        self.repo.bind('skos', SKOS)
+        self.repo.bind('swrc', SWRC)
+        self.repo.bind('bibo', BIBO)
+        self.repo.bind('dcterms', DCTERMS)
+        self.repo.bind('dc', DC)
+        self.repo.bind('timeline', TIMELINE)
+
+    def load_initial_urls(self):
+        if self.initial_urls:
+            for url in self.initial_urls:
+                if re.match(r'^http://ceur-ws\.org/*$', url, re.I):
+                    self.add_task(Task('initial', url=url, priority=0))
+                else:
+                    self.add_task(Task('initial', url=url, priority=1))
 
     def task_initial(self, grab, task):
         print "[TASK %s] started" % task.url
@@ -59,6 +76,7 @@ class CEURSpider(Spider):
                     except Exception as ex:
                         print "[TASK %s][PARSER %s] Error: %s" % (task.url, parser, ex)
                         import traceback
+
                         traceback.print_exc()
 
     def shutdown(self):

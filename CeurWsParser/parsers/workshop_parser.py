@@ -1,6 +1,5 @@
 import re
 import urllib
-import traceback
 
 from grab.tools import rex
 from grab.spider import Task
@@ -8,14 +7,10 @@ from grab.error import DataNotFound
 from rdflib import URIRef, Literal
 from rdflib.namespace import RDF, RDFS, XSD
 
-from base import Parser
+from CeurWsParser.parsers.base import Parser, ListParser, create_proceedings_uri
 from CeurWsParser import config
 from CeurWsParser.parsers import utils
 from CeurWsParser.namespaces import BIBO, TIMELINE, SWC, SWRC, SKOS
-
-
-def extract_volume_number(url):
-    return rex.rex(url, r'.*http://ceur-ws.org/Vol-(\d+).*').group(1)
 
 
 def extract_year(string):
@@ -41,57 +36,146 @@ def tonumber(string):
     return string
 
 
-class WorkshopSummaryParser(Parser):
+class WorkshopSummaryParser(ListParser):
+    XPATH_SUMMARY = '/html/body/table[last()]/tr[td]'
+    XPATH_SUMMARY_TITLE = './/td[last()]//a[@href]'
+
     def __init__(self, grab, task, graph, spider=None):
-        Parser.__init__(self, grab, task, graph, failonerror=True, spider=spider)
+        ListParser.__init__(self, grab, task, graph, failonerror=True, spider=spider)
 
-    def parse_template_main(self):
-        workshops = []
-        tr = self.grab.tree.xpath('/html/body/table[last()]/tr[td]')
+    def add_workshop(self, workshop):
+        if len(workshop) != 0:
+            if 'workshops' not in self.data:
+                self.data['workshops'] = [workshop]
+            else:
+                self.data['workshops'].append(workshop)
+
+    def extract_list(self):
+        tr = self.grab.tree.xpath(WorkshopSummaryParser.XPATH_SUMMARY)
         for i in range(0, len(tr), 2):
-            try:
-                href = tr[i].find('.//td[last()]//a[@href]')
-                if href.get('href') in config.input_urls or len(config.input_urls) == 1:
-                    workshop = {}
-                    summary = tr[i + 1].find('.//td[last()]').text_content()
-                    try:
-                        title = rex.rex(summary, r'(.*)Edited\s*by.*', re.I | re.S).group(1)
-                    except:
-                        print '[WORKSHOP %s: WorkshopSummaryParser] Summary information not found!' % href.get('href')
-                        continue
+            element = list()
+            #<a> with the title
+            element.append(tr[i].find(WorkshopSummaryParser.XPATH_SUMMARY_TITLE))
+            #text with the summary information
+            element.append(tr[i + 1].find('.//td[last()]').text_content())
 
-                    workshop['volume_number'] = extract_volume_number(href.get('href'))
-                    workshop['label'] = href.text.replace('.', '')
-                    workshop['url'] = href.get('href')
-                    workshop['time'] = utils.parse_date(title)
-                    try:
-                        workshop['edition'] = tonumber(
-                            rex.rex(title,
-                                    r'.*Proceedings(\s*of)?(\s*the)?\s*(\d{1,}|first|second|third|forth|fourth|fifth)[thrd]*'
-                                    r'.*Workshop.*',
-                                    re.I, default=None).group(3))
-                    except:
-                        #'edition' property is optional
-                        pass
-                    workshops.append(workshop)
-            except:
-                traceback.print_exc()
+            if element[0].get('href') in config.input_urls or len(config.input_urls) == 1:
+                self.list.append(element)
 
-        self.data['workshops'] = workshops
+    def parse_template_1(self, element):
+        """
+        A template for joint proceedings of two workshops.
 
-        if len(workshops) == 0:
-            raise DataNotFound("There is no summary information to parse!")
+        Examples:
+            - http://ceur-ws.org/Vol-1098/
+            - http://ceur-ws.org/Vol-989/
+        """
+        workshop_1 = {'id': 1}
+        workshop_2 = {'id': 2}
+        summary = self.rex(element[1], [
+            r"(joint\s+proceedings\s+of\s+([\s\w,]+)\(([a-zA-Z]+)['\s]?\d+\)[and,\s]+"
+            r"([:\s\w-]+)\(([a-zA-Z]+)['\s]?\d+\)([\w\s\-.,^\(]*|[,\s]+workshops\s+of.*|[,\s]+co-located.*))Edited by.*",
+
+            r"(proceedings\s+of\s+joint([\s\w,]+)\(([a-zA-Z]+)['\s]?\d{0,4}\)[and,\s]+"
+            r"([:,\s\w-]+)\(([a-zA-Z]+)['\s]?\d{0,4}\)([\w\s\-.,^\(]*|[,\s]+workshops\s+of.*|[,\s]+co-located.*))Edited by.*"
+        ], re.I | re.S)
+
+        if len(summary.groups()) != 6:
+            raise DataNotFound()
+
+        title = summary.group(1)
+
+        workshop_1['volume_number'] = workshop_2['volume_number'] = \
+            WorkshopSummaryParser.extract_volume_number(element[0].get('href'))
+        workshop_1['url'] = workshop_2['url'] = element[0].get('href')
+        workshop_1['time'] = workshop_2['time'] = utils.parse_date(title)
+
+        workshop_1['label'] = summary.group(2)
+        workshop_1['short_label'] = summary.group(3)
+        workshop_2['label'] = summary.group(4)
+        workshop_2['short_label'] = summary.group(5)
+
+        self.add_workshop(workshop_1)
+        self.add_workshop(workshop_2)
+
+    def parse_template_2(self, element):
+        """
+        A template for joint proceedings of three workshops.
+
+        Examples:
+            - http://ceur-ws.org/Vol-981/
+            - http://ceur-ws.org/Vol-862/
+            - http://ceur-ws.org/Vol-853/
+        """
+        workshop_1 = {'id': 1}
+        workshop_2 = {'id': 2}
+        workshop_3 = {'id': 3}
+        summary = self.rex(element[1], [
+            r'(joint\s+proceedings\s+of\s+[the]*.*workshops:\s*([\s\w]+)\(([a-zA-Z]+)\d+\)'
+            r'[and,\s]+([\s\w]+)\(([a-zA-Z]+)\d+\)[and,\s]+([\s\w]+)\(([a-zA-Z]+)\d+\)[,\s]+.*)Edited by.*',
+
+            r"(joint\s+proceedings\s+of\s+([\s\w,]+)\(([a-zA-Z]+)['\s]?\d+\)[and,\s]+([\s\w-]+)\(([a-zA-Z]+)['\s]?\d+\)"
+            r"[and,\s]+([\s\w]+)\(([a-zA-Z]+)['\s]?\d+\)[,\s]+.*)Edited by.*"
+        ],
+                           re.I | re.S)
+
+        if len(summary.groups()) != 7:
+            raise DataNotFound()
+
+        title = summary.group(1)
+
+        workshop_1['volume_number'] = workshop_2['volume_number'] = workshop_3['volume_number'] = \
+            WorkshopSummaryParser.extract_volume_number(element[0].get('href'))
+        workshop_1['url'] = workshop_2['url'] = workshop_3['url'] = element[0].get('href')
+        workshop_1['time'] = workshop_2['time'] = workshop_3['time'] = utils.parse_date(title)
+
+        workshop_1['label'] = summary.group(2)
+        workshop_1['short_label'] = summary.group(3)
+        workshop_2['label'] = summary.group(4)
+        workshop_2['short_label'] = summary.group(5)
+        workshop_3['label'] = summary.group(6)
+        workshop_3['short_label'] = summary.group(7)
+
+        self.add_workshop(workshop_1)
+        self.add_workshop(workshop_2)
+        self.add_workshop(workshop_3)
+
+    def parse_template_3(self, element):
+        workshop = {}
+        title = rex.rex(element[1], r'(.*)Edited\s*by.*', re.I | re.S).group(1)
+
+        workshop['volume_number'] = WorkshopSummaryParser.extract_volume_number(element[0].get('href'))
+        workshop['label'] = element[0].text.replace('.', '')
+        workshop['url'] = element[0].get('href')
+        workshop['time'] = utils.parse_date(title)
+        try:
+            workshop['edition'] = tonumber(
+                rex.rex(title,
+                        r'.*Proceedings(\s*of)?(\s*the)?\s*(\d{1,}|first|second|third|forth|fourth|fifth)[thrd]*'
+                        r'.*Workshop.*',
+                        re.I, default=None).group(3))
+        except:
+            #'edition' property is optional
+            pass
+
+        self.add_workshop(workshop)
 
     def write(self):
         triples = []
         for workshop in self.data['workshops']:
-            resource = create_workshop_uri(workshop['volume_number'])
+            if 'id' in workshop:
+                resource = create_workshop_uri("%s#%s" % (workshop['volume_number'], workshop['id']))
+            else:
+                resource = create_workshop_uri(workshop['volume_number'])
             proceedings = URIRef(workshop['url'])
             triples.append((resource, RDF.type, BIBO.Workshop))
             triples.append((resource, RDFS.label, Literal(workshop['label'], datatype=XSD.string)))
             triples.append((proceedings, BIBO.presentedAt, resource))
             if 'edition' in workshop:
                 triples.append((resource, SWRC.edition, Literal(workshop['edition'], datatype=XSD.integer)))
+
+            if 'short_label' in workshop:
+                triples.append((resource, BIBO.shortTitle, Literal(workshop['short_label'], datatype=XSD.string)))
 
             if workshop['time'] and len(workshop['time']) > 1:
                 triples.append((
@@ -113,7 +197,10 @@ class WorkshopSummaryParser(Parser):
 class WorkshopRelationsParser(Parser):
     """
     Should parser the index page before WorkshopSummaryParser parser, because this parser updates config.input_urls.
+
+    WARNING: Ignores joint proceedings!
     """
+
     def parse_template_main(self):
         tr = self.grab.tree.xpath('/html/body/table[last()]/tr[td]')
         self.data['workshops'] = []
@@ -127,7 +214,7 @@ class WorkshopRelationsParser(Parser):
                     if len(a.get('href')) > 1:
                         related.append(a.get('href')[5:])
                 workshop = {
-                    'volume_number': extract_volume_number(workshop_url),
+                    'volume_number': WorkshopRelationsParser.extract_volume_number(workshop_url),
                     'related': related
                 }
                 self.data['workshops'].append(workshop)
@@ -150,7 +237,7 @@ class WorkshopPageParser(Parser):
         Parser.__init__(self, grab, task, graph, failonerror=False, spider=spider)
 
     def begin_template(self):
-        self.data['volume_number'] = extract_volume_number(self.task.url)
+        self.data['volume_number'] = WorkshopPageParser.extract_volume_number(self.task.url)
 
     def end_template(self):
         # print self.task.url
@@ -225,11 +312,12 @@ class WorkshopPageParser(Parser):
 
     def write(self):
         triples = []
-        workshop = create_workshop_uri(self.data['volume_number'])
+        proceedings = create_proceedings_uri(self.data['volume_number'])
         conference = URIRef(config.id['conference'] + urllib.quote(self.data['acronym'] + "-" + self.data['year']))
         triples.append((conference, RDF.type, SWC.OrganizedEvent))
         triples.append((conference, RDFS.label, Literal(self.data['acronym'], datatype=XSD.string)))
         triples.append((conference, TIMELINE.atDate, Literal(self.data['year'], datatype=XSD.gYear)))
-        triples.append((workshop, SWC.isSubEventOf, conference))
+        for workshop in self.graph.objects(proceedings, BIBO.presentedAt):
+            triples.append((workshop, SWC.isSubEventOf, conference))
 
         self.write_triples(triples)
