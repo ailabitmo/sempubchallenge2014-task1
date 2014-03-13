@@ -1,7 +1,6 @@
 from datetime import datetime
 import re
 import urllib
-import traceback
 
 from grab.tools import rex, text
 from grab.error import DataNotFound
@@ -14,15 +13,18 @@ from CeurWsParser import config
 
 
 class ProceedingsSummaryParser(Parser):
+    XPATH_SUMMARY = '/html/body/table[last()]/tr[td]'
+    XPATH_SUMMARY_TITLE = './/td[last()]//a[@href]'
+
     def parse_template_main(self):
         proceedings_list = []
-        tr = self.grab.tree.xpath('/html/body/table[last()]/tr[td]')
+        tr = self.grab.tree.xpath(self.XPATH_SUMMARY)
         for i in range(0, len(tr), 2):
-            href = tr[i].find('.//td[last()]//a[@href]')
+            href = tr[i].find(self.XPATH_SUMMARY_TITLE)
             try:
                 if href.get('href') in config.input_urls or len(config.input_urls) == 1:
                     proceedings = dict()
-                    proceedings['volume_number'] = rex.rex(href.get('href'), r'.*http://ceur-ws.org/Vol-(\d+).*').group(1)
+                    proceedings['volume_number'] = ProceedingsSummaryParser.extract_volume_number(href.get('href'))
                     proceedings['url'] = href.get('href')
                     summary_match = rex.rex(
                         tr[i + 1].find('.//td[last()]').text_content(),
@@ -31,8 +33,9 @@ class ProceedingsSummaryParser(Parser):
 
                     proceedings['label'] = re.sub(r'\n', '', text.normalize_space(summary_match.group(1), ' \n'))
                     proceedings['editors'] = re.split(r",+\s*", text.normalize_space(summary_match.group(3)))
-                    proceedings['submission_date'] = datetime.strptime(text.normalize_space(summary_match.group(7), ' \n'),
-                                                                       '%d-%b-%Y')
+                    proceedings['submission_date'] = datetime.strptime(
+                        text.normalize_space(summary_match.group(7), ' \n'),
+                        '%d-%b-%Y')
 
                     proceedings_list.append(proceedings)
             except:

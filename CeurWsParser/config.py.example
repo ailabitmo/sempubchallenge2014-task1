@@ -3,14 +3,15 @@
 sparqlstore = dict(
     url = "", #OpenRDF Sesame URL
     repository = "", #a repository name
-    uri_base = "http://sempubchallenge.com/resource/"
+    uri_base = "http://ceur-ws.org/resource/"
 )
 
 id = dict(
     person = sparqlstore['uri_base'] + "person/",
     proceedings = sparqlstore['uri_base'] + "proceedings/ceur-ws/",
-    publication = sparqlstore['uri_base'] + "publication/"
-    workshop = sparqlstore['uri_base'] + "workshop/"
+    publication = sparqlstore['uri_base'] + "publication/",
+    workshop = sparqlstore['uri_base'] + "workshop/",
+    conference=sparqlstore['uri_base'] + "conference/"
 )
 
 input_urls = ["http://ceur-ws.org/"]

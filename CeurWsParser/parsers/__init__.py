@@ -2,4 +2,4 @@ from CeurWsParser.parsers.workshop_parser import WorkshopSummaryParser, Workshop
 from CeurWsParser.parsers.proceedings_parser import ProceedingsSummaryParser, EditorAffiliationParser
 from CeurWsParser.parsers.publication_parser import PublicationParser
 from CeurWsParser.parsers.pdf_parser import PDFParser
-from CeurWsParser.parsers.base import Parser
+from CeurWsParser.parsers.base import Parser, ListParser

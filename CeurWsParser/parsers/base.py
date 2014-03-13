@@ -1,7 +1,13 @@
 import inspect
+import traceback
 
 from grab.error import DataNotFound
 from grab.tools import rex
+from rdflib import URIRef
+
+
+def create_proceedings_uri(volume_number):
+    return URIRef("http://ceur-ws.org/Vol-%s/" % volume_number)
 
 
 class NoTemplateError(Exception):
@@ -32,7 +38,6 @@ class Parser:
                     parsed = True
                     break
                 except DataNotFound:
-                    # import traceback
                     # traceback.print_exc()
                     pass
         if not parsed:
@@ -60,7 +65,8 @@ class Parser:
         else:
             raise Exception("%s is wrong parameter! Should be a list of tuples or a tuple" % repr(triples))
 
-    def rex(self, body, patterns, flags=0, default=rex.NULL):
+    @staticmethod
+    def rex(body, patterns, flags=0, default=rex.NULL):
         result = None
         lastexception = DataNotFound()
         found = False
@@ -76,3 +82,42 @@ class Parser:
             return result
         else:
             raise lastexception
+
+    @staticmethod
+    def extract_volume_number(url):
+        return rex.rex(url, r'.*http://ceur-ws.org/Vol-(\d+).*').group(1)
+
+
+class ListParser(Parser):
+    def __init__(self, grab, task, graph, failonerror=True, spider=None):
+        Parser.__init__(self, grab, task, graph, failonerror=failonerror, spider=spider)
+        self.list = []
+
+    def extract_list(self):
+        raise Exception("Method doesn't have implementation!")
+
+    def parse(self):
+        self.extract_list()
+        methods = []
+        for method in inspect.getmembers(self, predicate=inspect.ismethod):
+            if method[0].startswith('parse_template_'):
+                methods.append(method[0])
+
+        for element in self.list:
+            try:
+                parsed = False
+                for method in methods:
+                    try:
+                        eval('self.%s(element)' % method)
+                        parsed = True
+                        break
+                    except DataNotFound:
+                        # traceback.print_exc()
+                        pass
+                if not parsed:
+                    if self.failonerror:
+                        raise NoTemplateError("%s" % self.task.url)
+                else:
+                    self.write()
+            except NoTemplateError:
+                print "Can't parse %s" % element
