@@ -42,8 +42,8 @@ class PublicationParser(Parser):
                     nop = pdf.getNumPages()
                     return nop
                 except:
-                    print "[PublicationParser] %s %s" % (link, name)
-                    traceback.print_exc()
+                    print "[PublicationParser] Error parse %s %s" % (link, name)
+                    #traceback.print_exc()
                     return None
                 finally:
                         os.remove(file_name)

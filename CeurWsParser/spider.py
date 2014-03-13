@@ -9,7 +9,7 @@ from grab.tools.logs import default_logging
 import rdflib
 
 from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, PublicationParser, \
-    WorkshopRelationsParser
+    WorkshopRelationsParser, PDFParser
 from CeurWsParser import config
 
 
