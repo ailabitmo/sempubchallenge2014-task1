@@ -5,3 +5,4 @@
 config.py
 scripts
 rdfdb.xml
+rdfdb.ttl

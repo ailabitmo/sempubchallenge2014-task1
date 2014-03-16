@@ -10,7 +10,7 @@ from rdflib.namespace import FOAF, DC, DCTERMS
 
 from CeurWsParser.namespaces import BIBO, SWRC, TIMELINE, SWC, SKOS
 from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, \
-    PublicationParser, WorkshopRelationsParser, PDFParser
+    PublicationParser, ProceedingsRelationsParser, PDFParser, WorkshopAcronymParser, WorkshopRelationsParser
 from CeurWsParser import config
 
 
@@ -22,8 +22,10 @@ mappings = dict(
     },
     parser_mappings={
         'index': [
-            WorkshopRelationsParser,
+            ProceedingsRelationsParser,
             WorkshopSummaryParser,
+            WorkshopAcronymParser,
+            WorkshopRelationsParser,
             ProceedingsSummaryParser
         ],
         'workshop': [
@@ -81,8 +83,8 @@ class CEURSpider(Spider):
 
     def shutdown(self):
         Spider.shutdown(self)
-        f = open('rdfdb.xml', 'w')
-        self.repo.serialize(f)
+        f = open('rdfdb.ttl', 'w')
+        self.repo.serialize(f, format='turtle')
         self.repo.close()
 
     # def task_workshop(self, grab, task):

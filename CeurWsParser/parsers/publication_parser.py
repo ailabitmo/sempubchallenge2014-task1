@@ -158,7 +158,7 @@ class PublicationParser(Parser):
                             if w[1] is not None and w[1] in session.text:
                                 publication_object['presentedAt'].append(w[0])
                     except:
-                        traceback.print_exc()
+                        # traceback.print_exc()
                         pass
 
                 if self.check_for_workshop_paper(publication_object):
@@ -208,7 +208,8 @@ class PublicationParser(Parser):
             self.data = {}
             raise DataNotFound()
 
-    def check_for_workshop_paper(self, publication):
+    @staticmethod
+    def check_for_workshop_paper(publication):
         if rex.rex(publication['name'], r'.*(preface|overview|introduction).*', re.I, default=None):
             return False
         if not publication['link'].endswith('.pdf'):

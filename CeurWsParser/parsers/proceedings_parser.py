@@ -2,13 +2,14 @@ from datetime import datetime
 import re
 import urllib
 
+from grab.spider import Task
 from grab.tools import rex, text
 from grab.error import DataNotFound
 from rdflib import URIRef, Literal
-from rdflib.namespace import RDF, RDFS, XSD, FOAF, DCTERMS, DC
+from rdflib.namespace import RDF, RDFS, XSD, FOAF, DCTERMS, DC, SKOS
 
 from CeurWsParser.namespaces import SWRC
-from base import Parser
+from CeurWsParser.parsers.base import Parser, create_proceedings_uri
 from CeurWsParser import config
 
 
@@ -65,6 +66,48 @@ class ProceedingsSummaryParser(Parser):
                 triples.append((resource, SWRC.editor, agent))
                 triples.append((agent, DC.creator, resource))
 
+        self.write_triples(triples)
+
+
+class ProceedingsRelationsParser(Parser):
+    """
+    Should parser the index page before WorkshopSummaryParser parser, because this parser updates config.input_urls.
+
+    WARNING: Ignores joint proceedings!
+    """
+
+    def parse_template_main(self):
+        tr = self.grab.tree.xpath('/html/body/table[last()]/tr[td]')
+        self.data['proceedings'] = []
+        for i in range(0, len(tr), 2):
+            proceedings_url = tr[i].find('.//td[last()]//a[@href]').get('href')
+            if len(config.input_urls) == 1:
+                self.spider.add_task(Task('initial', url=proceedings_url))
+            if proceedings_url in config.input_urls or len(config.input_urls) == 1:
+                related = []
+                for a in tr[i + 1].findall(".//td[1]//a[@href]"):
+                    if len(a.get('href')) > 1:
+                        related.append(a.get('href')[5:])
+                proceedings = {
+                    'volume_number': ProceedingsRelationsParser.extract_volume_number(proceedings_url),
+                    'related': related
+                }
+                self.data['proceedings'].append(proceedings)
+
+    def write(self):
+        triples = []
+        for proceedings in self.data['proceedings']:
+            if len(proceedings['related']) > 0:
+                resource = create_proceedings_uri(proceedings['volume_number'])
+                for related in proceedings['related']:
+
+                    if len(config.input_urls) > 1:
+                        related_url = "http://ceur-ws.org/Vol-%s/" % related
+                        config.input_urls.append(related_url)
+                        self.spider.add_task(Task('initial', url=related_url))
+
+                    related_resource = create_proceedings_uri(related)
+                    triples.append((resource, SKOS.related, related_resource))
         self.write_triples(triples)
 
 
