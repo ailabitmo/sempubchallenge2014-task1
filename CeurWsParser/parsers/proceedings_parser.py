@@ -109,20 +109,3 @@ class ProceedingsRelationsParser(Parser):
                     related_resource = create_proceedings_uri(related)
                     triples.append((resource, SKOS.related, related_resource))
         self.write_triples(triples)
-
-
-class EditorAffiliationParser(Parser):
-    # def __init__(self, grab, task, graph):
-    #     Parser.__init__(self, grab, task, graph)
-    #     self.output = open('affiliations.txt', 'a')
-
-    def parse_template_main(self):
-        # editors = '\n'.join(self.grab.tree.xpath(r'/html/body//text()[preceding::*[contains(., "Edited by")] and'
-        #                                          r' following::*[contains(.,"Table of Contents") or @class="CEURTOC"]]'))
-        # self.output.write("%s\n" % self.task.url)
-        # self.output.write(editors.encode('utf-8'))
-        # self.output.write('\n====\n')
-        pass
-
-    def write(self):
-        pass

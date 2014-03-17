@@ -1,11 +1,11 @@
 import re
 import urllib
+import difflib
 
 from grab.tools import rex
 from grab.error import DataNotFound
 from rdflib import URIRef, Literal
-from rdflib.compare import similar
-from rdflib.namespace import RDF, RDFS, XSD
+from rdflib.namespace import RDF, RDFS, XSD, FOAF
 
 from CeurWsParser.parsers.base import Parser, ListParser, create_proceedings_uri
 from CeurWsParser import config
@@ -265,9 +265,6 @@ class WorkshopPageParser(Parser):
         self.data['volume_number'] = WorkshopPageParser.extract_volume_number(self.task.url)
 
     def end_template(self):
-        # print self.task.url
-        # print self.data['acronym']
-        # print self.data['year']
         pass
 
     def parse_template_1(self):
@@ -363,8 +360,6 @@ class WorkshopRelationsParser(ListParser):
         return set(w_a_labels + map(self.long_to_short, w_a_labels))
 
     def is_related(self, w_a, w_b):
-        import difflib
-
         w_a_labels = self.find_labels(w_a)
         w_b_labels = self.find_labels(w_b)
         related = False
@@ -438,5 +433,60 @@ class WorkshopAcronymParser(ListParser):
         triples = []
         workshop = create_workshop_uri(self.data['volume_number'])
         triples.append((workshop, RDFS.label, Literal(self.data['short_label'], datatype=XSD.string)))
+
+        self.write_triples(triples)
+
+
+class JointWorkshopsEditorsParser(Parser):
+    def __init__(self, grab, task, graph, spider=None):
+        Parser.__init__(self, grab, task, graph, failonerror=False, spider=spider)
+
+    def begin_template(self):
+        self.data['volume_number'] = WorkshopPageParser.extract_volume_number(self.task.url)
+        self.data['proceedings'] = create_proceedings_uri(self.data['volume_number'])
+        workshops = [w for w in self.graph.objects(self.data['proceedings'], BIBO.presentedAt)]
+        if len(workshops) > 1:
+            self.data['workshops'] = workshops
+        else:
+            raise DataNotFound('Skipping http://ceur-ws.org/Vol-%s/ proceedings, because it\'s not joint'
+                               % self.data['volume_number'])
+
+    def parse_template_1(self):
+        """
+        Examples:
+            - http://ceur-ws.org/Vol-981/
+        """
+        self.begin_template()
+        editors_block = u' '.join(
+            self.grab.tree.xpath('/html/body//text()[preceding::*[contains(., "Edited by")] and '
+                                 'following::*[contains(.,"Table of Contents") or @class="CEURTOC"]]'))
+        editors = self.graph.objects(self.data['proceedings'], SWRC.editor)
+        self.data['chairs'] = dict()
+        for editor in editors:
+            name = self.graph.objects(editor, FOAF.name).next()
+            regexp = u'.*' + name + u'[\s~\xc2\xb0@#$%\^&*+-\xc2\xac]*\((\w+?)\d+\).*'
+            match = re.match(regexp, editors_block,
+                             re.I | re.S)
+            if match:
+                self.data['chairs'][editor] = match.group(1)
+        if len(self.data['chairs']) == 0:
+            raise DataNotFound()
+
+    def write(self):
+        triples = []
+        workshops = [w for w in self.graph.objects(self.data['proceedings'], BIBO.presentedAt)]
+        for editor, v in self.data['chairs'].iteritems():
+            for workshop in workshops:
+                chair = URIRef(workshop.toPython() + '/chair')
+                closes = difflib.get_close_matches(v,
+                                                   [label.toPython() for label in
+                                                    self.graph.objects(workshop, RDFS.label | BIBO.shortTitle)])
+                if len(closes) > 0:
+                    triples.append((chair, RDF.type, SWC.Chair))
+                    triples.append((editor, SWC.holdsRole, chair))
+                    triples.append((chair, SWC.heldBy, editor))
+                    triples.append((workshop, SWC.hasRole, chair))
+                    triples.append((chair, SWC.isRoleAt, workshop))
+                    break
 
         self.write_triples(triples)
