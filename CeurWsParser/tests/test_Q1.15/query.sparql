@@ -9,3 +9,4 @@ SELECT ?acrn ?proc ?chair_name {
     ?proc bibo:presentedAt ?w .
     FILTER(?w_name = ?acrn)
 }
+LIMIT 10

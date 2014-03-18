@@ -11,7 +11,7 @@ from rdflib.plugins.stores import sparqlstore
 from rdflib.namespace import FOAF, DCTERMS, DC, XSD
 
 import config
-from namespaces import SWRC, BIBO, TIMELINE
+from namespaces import SWRC, BIBO, TIMELINE, SWC, SKOS
 
 
 QUERY_FILENAME = 'query.sparql'
@@ -69,6 +69,8 @@ def main(test):
     graph.bind('foaf', FOAF)
     graph.bind('xsd', XSD)
     graph.bind('swrc', SWRC)
+    graph.bind('swc', SWC)
+    graph.bind('skos', SKOS)
     graph.bind('bibo', BIBO)
     graph.bind('dcterms', DCTERMS)
     graph.bind('dc', DC)
