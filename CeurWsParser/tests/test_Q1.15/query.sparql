@@ -1,4 +1,4 @@
-SELECT ?acrn ?proc ?chair_name {
+SELECT (STRDT(?acrn, xsd:string) AS ?acrn_str) ?proc ?chair_name {
     VALUES (?acrn ?proc) {
         ("BeRSys" <http://ceur-ws.org/Vol-981/>)
     }

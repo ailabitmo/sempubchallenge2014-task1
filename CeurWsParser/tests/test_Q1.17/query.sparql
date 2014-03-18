@@ -1,4 +1,4 @@
-SELECT ?acrn (YEAR(?c_date) AS ?c_year) ?w_name {
+SELECT (STRDT(?acrn, xsd:string) AS ?acrn_str) (YEAR(?c_date) AS ?c_year) ?w_name {
   VALUES (?acrn ?year) {
     ("ISWC" "2012")
   }

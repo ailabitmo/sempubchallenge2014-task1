@@ -1,4 +1,4 @@
-SELECT ?acrn ?year ?proc {
+SELECT (STRDT(?acrn, xsd:string) AS ?acrn_str) (YEAR(?conf_date) AS ?conf_date_int) ?proc {
   VALUES (?acrn ?year) {
     ("ISWC" "2012")
   }

@@ -1,4 +1,4 @@
-SELECT ?conf_name ?conf_year ?proc WHERE {
+SELECT ?conf_name (YEAR(?conf_year) AS ?conf_year_int) ?proc WHERE {
   {
     ?conf a swc:OrganizedEvent;
           rdfs:label "LPNMR"^^xsd:string ;

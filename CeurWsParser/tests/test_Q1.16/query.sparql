@@ -1,4 +1,4 @@
-SELECT ?acrn (YEAR(?cr_date) AS ?date) ?pr {
+SELECT (STRDT(?acrn, xsd:string) AS ?acrn_str) (YEAR(?cr_date) AS ?date) ?pr {
   ?c a swc:OrganizedEvent ;
         rdfs:label ?c_name ;
         timeline:atDate ?c_date .
