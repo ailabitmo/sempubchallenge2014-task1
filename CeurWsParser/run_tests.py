@@ -3,14 +3,15 @@
 import os
 import csv
 import traceback
+import argparse
 from csv import Dialect
 
 from rdflib import Graph, Literal, URIRef, util
 from rdflib.plugins.stores import sparqlstore
 from rdflib.namespace import FOAF, DCTERMS, DC, XSD
 
-from CeurWsParser import config
-from CeurWsParser.namespaces import SWRC, BIBO, TIMELINE
+import config
+from namespaces import SWRC, BIBO, TIMELINE
 
 
 QUERY_FILENAME = 'query.sparql'
@@ -57,7 +58,7 @@ def print_list(l):
             print row
 
 
-def main():
+def main(test):
     number_of_passed = 0
     number_of_failed = 0
     number_of_failed_with_exception = 0
@@ -74,45 +75,46 @@ def main():
     graph.bind('timeline', TIMELINE)
 
     for f in os.listdir(TESTS_ROOT_DIR):
-        print "========================="
-        print "[TEST %s] Running..." % f
-        try:
-            passed = True
-            with open('%s/%s/%s' % (TESTS_ROOT_DIR, f, QUERY_FILENAME)) as query_file:
-                result = graph.query(query_file.read())
+        if (test is not None and f == test) or test is None:
+            print "========================="
+            print "[TEST %s] Running..." % f
+            try:
+                passed = True
+                with open('%s/%s/%s' % (TESTS_ROOT_DIR, f, QUERY_FILENAME)) as query_file:
+                    result = graph.query(query_file.read())
 
-                results = []
-                for r in result:
-                    result_line = [normalize(graph.namespace_manager, x) for x in r]
-                    results.append(result_line)
+                    results = []
+                    for r in result:
+                        result_line = [normalize(graph.namespace_manager, x) for x in r]
+                        results.append(result_line)
 
-                print "[TEST %s] Number of results: %s" % (f, len(results))
+                    print "[TEST %s] Number of results: %s" % (f, len(results))
 
-                with open('%s/%s/%s' % (TESTS_ROOT_DIR, f, EXPECTED_FILENAME), 'rb') as expected_file:
-                    expected = read_csv(expected_file)
-                    print "[TEST %s] Number of expected results: %s" % (f, len(expected))
-                    if len(results) != len(expected):
-                        passed = False
+                    with open('%s/%s/%s' % (TESTS_ROOT_DIR, f, EXPECTED_FILENAME), 'rb') as expected_file:
+                        expected = read_csv(expected_file)
+                        print "[TEST %s] Number of expected results: %s" % (f, len(expected))
+                        if len(results) != len(expected):
+                            passed = False
+                        else:
+                            for row in expected:
+                                if row not in results:
+                                    print "[TEST %s] [%s] not found!" % (f, ', '.join(map(repr, row)))
+                                    print "[TEST %s] Query results:" % f
+                                    print_list(results)
+                                    passed = False
+                                    break
+
+                    if passed:
+                        print "[TEST %s] Passed!" % f
+                        number_of_passed += 1
                     else:
-                        for row in expected:
-                            if row not in results:
-                                print "[TEST %s] [%s] not found!" % (f, ', '.join(map(repr, row)))
-                                print "[TEST %s] Query results:" % f
-                                print_list(results)
-                                passed = False
-                                break
+                        print "[TEST %s] Failed!" % f
+                        number_of_failed += 1
 
-                if passed:
-                    print "[TEST %s] Passed!" % f
-                    number_of_passed += 1
-                else:
-                    print "[TEST %s] Failed!" % f
-                    number_of_failed += 1
-
-        except:
-            print "[TEST %s] Failed with exception!" % f
-            number_of_failed_with_exception += 1
-            traceback.print_exc()
+            except:
+                print "[TEST %s] Failed with exception!" % f
+                number_of_failed_with_exception += 1
+                traceback.print_exc()
 
     print "\n======RESULTS======\n"
     print "Passed: %s" % number_of_passed
@@ -121,4 +123,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Run the test SPARQL queries for Task 1')
+    parser.add_argument('--test', required=False)
+    args = parser.parse_args()
+    main(args.test)
