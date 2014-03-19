@@ -11,7 +11,7 @@ from rdflib.namespace import FOAF, DC, DCTERMS
 from CeurWsParser.namespaces import BIBO, SWRC, TIMELINE, SWC, SKOS
 from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, \
     PublicationParser, ProceedingsRelationsParser, PDFParser, WorkshopAcronymParser, WorkshopRelationsParser, \
-    JointWorkshopsEditorsParser
+    JointWorkshopsEditorsParser, PublicationNumOfPagesParser
 from CeurWsParser import config
 
 
@@ -34,7 +34,9 @@ mappings = dict(
             JointWorkshopsEditorsParser,
             PublicationParser
         ],
-        'publication': []
+        'publication': [
+            PublicationNumOfPagesParser
+        ]
     }
 )
 

@@ -9,6 +9,7 @@ import traceback
 
 from grab.error import DataNotFound
 from grab.tools import rex
+from grab.spider import Task
 from rdflib import URIRef, Literal
 from rdflib.namespace import RDF, RDFS, FOAF, DCTERMS, DC, XSD
 from PyPDF2 import PdfFileReader
@@ -17,6 +18,8 @@ from CeurWsParser.parsers.base import Parser, create_proceedings_uri
 from CeurWsParser.namespaces import SWRC, BIBO, SWC
 from CeurWsParser import config
 
+def create_publication_uri(proceedings_url, file_name):
+    return URIRef('%s#%s' % (proceedings_url, file_name))
 
 class PublicationParser(Parser):
     def begin_template(self):
@@ -65,11 +68,14 @@ class PublicationParser(Parser):
             pass
 
     def write(self):
-        print "Parse done %s. Count of publications: %s" % (self.task.url, len(self.data['publications']))
+        print "[TASK %s][PublicationParser] Count of publications: %s" % (self.task.url, len(self.data['publications']))
         triples = []
         proceedings = URIRef(self.data['workshop'])
         for publication in self.data['publications']:
-            resource = URIRef('%s#%s' % (self.data['workshop'], publication['file_name']))
+
+            self.spider.add_task(Task('initial', url=publication['link']))
+
+            resource = create_publication_uri(self.data['workshop'], publication['file_name'])
             triples.append((proceedings, DCTERMS.hasPart, resource))
             triples.append((resource, RDF.type, FOAF.Document))
             triples.append((resource, DCTERMS.partOf, proceedings))
@@ -78,8 +84,8 @@ class PublicationParser(Parser):
             triples.append((resource, FOAF.homepage, Literal(publication['link'], datatype=XSD.anyURI)))
             if publication['is_invited']:
                 triples.append((resource, RDF.type, SWC.InvitedPaper))
-            if publication['num_of_pages']:
-                triples.append((resource, BIBO.numPages, Literal(publication['num_of_pages'], datatype=XSD.integer)))
+            # if publication['num_of_pages']:
+            #     triples.append((resource, BIBO.numPages, Literal(publication['num_of_pages'], datatype=XSD.integer)))
             for editor in publication['editors']:
                 agent = URIRef(config.id['person'] + urllib.quote(editor.encode('utf-8')))
                 triples.append((agent, RDF.type, FOAF.Agent))
@@ -109,7 +115,7 @@ class PublicationParser(Parser):
                     'file_name': file_name,
                     'link': self.task.url + publication_link,
                     'editors': editors,
-                    'num_of_pages': self.get_num_of_pages(self.task.url + publication_link, file_name)
+                    # 'num_of_pages': self.get_num_of_pages(self.task.url + publication_link, file_name)
                 }
                 publication_object['is_invited'] = self.is_invited(publication_object)
                 if self.check_for_workshop_paper(publication_object):
@@ -145,7 +151,7 @@ class PublicationParser(Parser):
                     'file_name': file_name,
                     'link': link,
                     'editors': editors,
-                    'num_of_pages': self.get_num_of_pages(link, file_name)
+                    # 'num_of_pages': self.get_num_of_pages(link, file_name)
                 }
                 publication_object['is_invited'] = self.is_invited(publication_object)
 
@@ -192,7 +198,7 @@ class PublicationParser(Parser):
                     'file_name': file_name,
                     'link': self.task.url + link,
                     'editors': editors,
-                    'num_of_pages': self.get_num_of_pages(self.task.url + link, file_name)
+                    # 'num_of_pages': self.get_num_of_pages(self.task.url + link, file_name)
                 }
                 publication_object['is_invited'] = self.is_invited(publication_object)
                 if self.check_for_workshop_paper(publication_object):
@@ -217,5 +223,36 @@ class PublicationParser(Parser):
         return True
 
 
-if __name__ == '__main__':
-    print "not runnable"
+class PublicationNumOfPagesParser(Parser):
+    def begin_template(self):
+        self.data['proceedings_url'] = "http://ceur-ws.org/Vol-%s/" % self.extract_volume_number(self.task.url)
+        self.data['file_name'] = self.task.url.rsplit('/')[-1]
+        self.data['id'] = self.data['file_name'].rsplit('.', 1)[:-1][0]
+        self.data['file_location'] = "%s/%s" % (tempfile.gettempdir(), self.data['file_name'])
+        self.grab.response.save(self.data['file_location'])
+
+    def end_template(self):
+        try:
+            os.remove(self.data['file_location'])
+        except:
+            pass
+
+    def parse_template_1(self):
+        try:
+            self.begin_template()
+            if self.task.url.endswith('.pdf'):
+                pdf = PdfFileReader(self.data['file_location'])
+                self.data['num_of_pages'] = pdf.getNumPages()
+            else:
+                raise DataNotFound()
+        except:
+            pass
+        finally:
+            self.end_template()
+
+    def write(self):
+        triples = []
+        resource = create_publication_uri(self.data['proceedings_url'], self.data['id'])
+        triples.append((resource, BIBO.numPages, Literal(self.data['num_of_pages'], datatype=XSD.integer)))
+
+        self.write_triples(triples)
