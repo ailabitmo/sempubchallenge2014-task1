@@ -8,7 +8,7 @@ from grab.tools.logs import default_logging
 import rdflib
 from rdflib.namespace import FOAF, DC, DCTERMS
 
-from CeurWsParser.namespaces import BIBO, SWRC, TIMELINE, SWC, SKOS
+from CeurWsParser.namespaces import BIBO, SWRC, TIMELINE, SWC, SKOS, DBPEDIAOWL
 from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, \
     PublicationParser, ProceedingsRelationsParser, PDFParser, WorkshopAcronymParser, WorkshopRelationsParser, \
     JointWorkshopsEditorsParser
@@ -34,7 +34,9 @@ mappings = dict(
             JointWorkshopsEditorsParser,
             PublicationParser
         ],
-        'publication': []
+        'publication': [
+            PDFParser
+        ]
     }
 )
 
@@ -55,6 +57,7 @@ class CEURSpider(Spider):
         self.repo.bind('swc', SWC)
         self.repo.bind('skos', SKOS)
         self.repo.bind('swrc', SWRC)
+        self.repo.bind('dbpedia-owl', DBPEDIAOWL)
         self.repo.bind('bibo', BIBO)
         self.repo.bind('dcterms', DCTERMS)
         self.repo.bind('dc', DC)
