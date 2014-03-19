@@ -120,7 +120,7 @@ def main():
     flval.close()
 
     bot.print_stats()
-    #print(bot.render_stats())
+    print(bot.render_stats())
 
 
 if __name__ == '__main__':
