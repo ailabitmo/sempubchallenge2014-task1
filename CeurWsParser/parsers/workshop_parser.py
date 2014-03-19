@@ -402,6 +402,9 @@ class WorkshopRelationsParser(ListParser):
 
 
 class WorkshopAcronymParser(ListParser):
+    """
+    NOTE: The parser doesn't support joint proceedings/workshops, they're just ignored.
+    """
     def __init__(self, grab, task, graph, spider):
         ListParser.__init__(self, grab, task, graph, failonerror=False, spider=spider)
 
@@ -414,7 +417,11 @@ class WorkshopAcronymParser(ListParser):
             #text with the summary information
             element.append(tr[i + 1].find('.//td[last()]').text_content())
 
-            if element[0].get('href') in config.input_urls or len(config.input_urls) == 1:
+            url = element[0].get('href')
+            workshops = [w for w in self.graph.objects(URIRef(url), BIBO.presentedAt)]
+
+            #This parser doesn't support joint proceedings/workshops
+            if (url in config.input_urls or len(config.input_urls) == 1) and len(workshops) == 1:
                 self.list.append(element)
 
     def parse_template_1(self, element):
@@ -432,7 +439,7 @@ class WorkshopAcronymParser(ListParser):
     def write(self):
         triples = []
         workshop = create_workshop_uri(self.data['volume_number'])
-        triples.append((workshop, RDFS.label, Literal(self.data['short_label'], datatype=XSD.string)))
+        triples.append((workshop, BIBO.shortTitle, Literal(self.data['short_label'], datatype=XSD.string)))
 
         self.write_triples(triples)
 

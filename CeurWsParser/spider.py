@@ -11,7 +11,7 @@ from rdflib.namespace import FOAF, DC, DCTERMS
 from CeurWsParser.namespaces import BIBO, SWRC, TIMELINE, SWC, SKOS, DBPEDIAOWL
 from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, \
     PublicationParser, ProceedingsRelationsParser, PDFParser, WorkshopAcronymParser, WorkshopRelationsParser, \
-    JointWorkshopsEditorsParser
+    JointWorkshopsEditorsParser, PublicationNumOfPagesParser
 from CeurWsParser import config
 
 
@@ -35,7 +35,8 @@ mappings = dict(
             PublicationParser
         ],
         'publication': [
-            PDFParser
+            PublicationNumOfPagesParser,
+			PDFParser
         ]
     }
 )
@@ -123,7 +124,7 @@ def main():
     flval.close()
 
     bot.print_stats()
-    #print(bot.render_stats())
+    print(bot.render_stats())
 
 
 if __name__ == '__main__':
