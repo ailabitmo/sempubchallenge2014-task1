@@ -100,11 +100,10 @@ class ProceedingsRelationsParser(Parser):
             if len(proceedings['related']) > 0:
                 resource = create_proceedings_uri(proceedings['volume_number'])
                 for related in proceedings['related']:
-
-                    if len(config.input_urls) > 1:
-                        related_url = "http://ceur-ws.org/Vol-%s/" % related
-                        config.input_urls.append(related_url)
-                        self.spider.add_task(Task('initial', url=related_url))
+                    # related_url = "http://ceur-ws.org/Vol-%s/" % related
+                    # if len(config.input_urls) > 1 and related_url not in config.input_urls:
+                    #     config.input_urls.append(related_url)
+                    #     # self.spider.add_task(Task('initial', url=related_url))
 
                     related_resource = create_proceedings_uri(related)
                     triples.append((resource, SKOS.related, related_resource))
