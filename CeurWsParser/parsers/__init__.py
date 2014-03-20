@@ -1,5 +1,5 @@
 from CeurWsParser.parsers.workshop_parser import WorkshopSummaryParser, WorkshopPageParser, WorkshopAcronymParser, \
-    WorkshopRelationsParser, JointWorkshopsEditorsParser
+    WorkshopRelationsParser, JointWorkshopsEditorsParser, EditorAffiliationParser
 from CeurWsParser.parsers.proceedings_parser import ProceedingsSummaryParser, ProceedingsRelationsParser
 from CeurWsParser.parsers.publication_parser import PublicationParser, PublicationNumOfPagesParser
 from CeurWsParser.parsers.pdf_parser import PDFParser

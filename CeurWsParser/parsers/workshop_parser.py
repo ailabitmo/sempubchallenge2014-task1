@@ -4,10 +4,11 @@ import difflib
 
 from grab.tools import rex
 from grab.error import DataNotFound
-from rdflib import URIRef, Literal
+from rdflib import URIRef, Literal, Graph
+from rdflib.plugins.stores.sparqlstore import SPARQLStore
 from rdflib.namespace import RDF, RDFS, XSD, FOAF
 
-from CeurWsParser.parsers.base import Parser, ListParser, create_proceedings_uri
+from CeurWsParser.parsers.base import Parser, ListParser, create_proceedings_uri, find_university_in_dbpedia
 from CeurWsParser import config
 from CeurWsParser.parsers import utils
 from CeurWsParser.namespaces import BIBO, TIMELINE, SWC, SWRC, SKOS
@@ -405,6 +406,7 @@ class WorkshopAcronymParser(ListParser):
     """
     NOTE: The parser doesn't support joint proceedings/workshops, they're just ignored.
     """
+
     def __init__(self, grab, task, graph, spider):
         ListParser.__init__(self, grab, task, graph, failonerror=False, spider=spider)
 
@@ -495,5 +497,38 @@ class JointWorkshopsEditorsParser(Parser):
                     triples.append((workshop, SWC.hasRole, chair))
                     triples.append((chair, SWC.isRoleAt, workshop))
                     break
+
+        self.write_triples(triples)
+
+
+class EditorAffiliationParser(Parser):
+    def __init__(self, grab, task, graph, spider=None):
+        Parser.__init__(self, grab, task, graph, spider=spider)
+        #DBPedia SPARQL Endpoint
+        # self.dbpedia = Graph('SPARQLStore', namespace_manager=self.graph.namespace_manager)
+        # self.dbpedia.open('http://dbpedia.org/sparql')
+
+        #DBPedia's dump of countries and universities
+        self.dbpedia = Graph(SPARQLStore(config.sparqlstore['url'] + "/repositories/" +
+                                         config.sparqlstore['dbpedia_dump'],
+                                         context_aware=False), namespace_manager=self.graph.namespace_manager)
+
+    def begin_template(self):
+        self.data['volume_number'] = WorkshopPageParser.extract_volume_number(self.task.url)
+        self.data['proceedings'] = create_proceedings_uri(self.data['volume_number'])
+
+    def parse_template_1(self):
+        self.begin_template()
+        header = '\n'.join(self.grab.tree.xpath('/html/body//text()[preceding::*[contains(., "Edited by")] '
+                                                'and following::*[contains(.,"Table of Contents") or @class="CEURTOC"]]'))
+
+        tokens = [re.sub(r'[\n\r,]+', '', token.strip()) for token in re.split(r'[,\t\n\r\f\*\+]+', header, re.I | re.S)
+                  if len(token.strip()) > 0]
+        self.data['universities'] = find_university_in_dbpedia(self.dbpedia, tokens)
+
+    def write(self):
+        triples = []
+        for u in self.data['universities']:
+            triples.append((self.data['proceedings'], SWRC.affiliation, u))
 
         self.write_triples(triples)

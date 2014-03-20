@@ -15,12 +15,11 @@ from rdflib import URIRef, Graph
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 from CeurWsParser import config
-from CeurWsParser.parsers.base import Parser
+from CeurWsParser.parsers.base import Parser, find_university_in_dbpedia
 from CeurWsParser.namespaces import SWRC, DBPEDIAOWL
 
 
 def find_country_in_dbpedia(graph, tokens):
-    print tokens
     values = ' '.join(['"' + token.strip() + '"' for token in tokens])
     try:
         results = graph.query("""SELECT DISTINCT ?country {
@@ -34,28 +33,6 @@ def find_country_in_dbpedia(graph, tokens):
             }
             UNION
             { ?country rdfs:label ?search }
-        }""")
-        return [row[0] for row in results]
-    except HTTPError as er:
-        print "[ERROR] DBPedia is inaccessible! HTTP code: %s" % er.code
-    return []
-
-
-def find_university_in_dbpedia(graph, tokens):
-    print tokens
-    values = ' '.join(['"' + token.strip() + '"' for token in tokens])
-    try:
-        results = graph.query("""SELECT DISTINCT ?university {
-            VALUES ?search {
-                """ + values + """
-            }
-            ?university a dbpedia-owl:University .
-            {
-                ?name_uri dbpedia-owl:wikiPageRedirects ?university ;
-                    rdfs:label ?search .
-            }
-            UNION
-            { ?university rdfs:label ?search }
         }""")
         return [row[0] for row in results]
     except HTTPError as er:
@@ -123,7 +100,7 @@ class PDFParser(Parser):
         publication = None
         for row in results:
             publication = row[0]
-            breakz
+            break
         if publication is not None:
             for country in self.data['countries']:
                 triples.append((publication, DBPEDIAOWL.country, URIRef(country)))
@@ -139,9 +116,11 @@ class PDFParser(Parser):
             try:
                 self.grab.response.save(self.data['file_location'])
                 first_page = convert_pdf_to_txt(self.data['file_location'])
-                end = re.search(r'Abstract|Introduction', first_page, re.I).start(0)
-                title = first_page[:end]
-                print title
+                try:
+                    title_end = re.search(r'Abstract|Introduction', first_page, re.I).start(0)
+                except:
+                    title_end = 500
+                title = first_page[:title_end]
                 self.data['countries'] = find_countries_in_text(self.dbpedia, title)
                 self.data['universities'] = find_universities_in_text(self.dbpedia, title)
 

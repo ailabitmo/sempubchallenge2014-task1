@@ -1,5 +1,5 @@
 import inspect
-import traceback
+from urllib2 import HTTPError
 
 from grab.error import DataNotFound
 from grab.tools import rex
@@ -12,6 +12,29 @@ def create_proceedings_uri(volume_number):
 
 def create_publication_uri(proceedings_url, file_name):
     return URIRef('%s#%s' % (proceedings_url, file_name))
+
+
+def find_university_in_dbpedia(graph, tokens):
+    values = ' '.join(['"' + token.strip().replace('\n', '') + '"' for token in tokens])
+    try:
+        results = graph.query("""SELECT DISTINCT ?university {
+            VALUES ?search {
+                """ + values + """
+            }
+            ?university a dbpedia-owl:University .
+            {
+                ?name_uri dbpedia-owl:wikiPageRedirects ?university ;
+                    rdfs:label ?search .
+            }
+            UNION
+            { ?university rdfs:label ?search }
+        }""")
+        return [row[0] for row in results]
+    except HTTPError as er:
+        print "[ERROR] DBPedia is inaccessible! HTTP code: %s" % er.code
+    except:
+        print tokens
+    return []
 
 
 class NoTemplateError(Exception):
@@ -57,13 +80,13 @@ class Parser:
         if isinstance(triples, list):
             for triple in triples:
                 self.graph.add(triple)
-            # length = len(triples)
-            # print length
-            # if length < self.step:
-            #     self.graph.addN(triples)
-            # else:
-            #     for i in range(0, length, self.step):
-            #         self.graph.addN(triples[i: i + self.step if i + self.step < length else length])
+                # length = len(triples)
+                # print length
+                # if length < self.step:
+                #     self.graph.addN(triples)
+                # else:
+                #     for i in range(0, length, self.step):
+                #         self.graph.addN(triples[i: i + self.step if i + self.step < length else length])
         elif isinstance(triples, tuple):
             self.graph.add(triples)
         else:
