@@ -24,16 +24,17 @@ def find_university_in_dbpedia(graph, tokens):
             ?university a dbpedia-owl:University .
             {
                 ?name_uri dbpedia-owl:wikiPageRedirects ?university ;
-                    rdfs:label ?search .
+                    rdfs:label ?label .
             }
             UNION
-            { ?university rdfs:label ?search }
+            { ?university rdfs:label ?label }
+            FILTER(STR(?label) = ?search)
         }""")
         return [row[0] for row in results]
     except HTTPError as er:
         print "[ERROR] DBPedia is inaccessible! HTTP code: %s" % er.code
     except:
-        print tokens
+        pass
     return []
 
 

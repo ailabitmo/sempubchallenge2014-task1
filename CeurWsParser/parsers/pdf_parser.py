@@ -20,6 +20,8 @@ from CeurWsParser.namespaces import SWRC, DBPEDIAOWL
 
 
 def find_country_in_dbpedia(graph, tokens):
+    if len(tokens) == 0:
+        return []
     values = ' '.join(['"' + token.strip() + '"' for token in tokens])
     try:
         results = graph.query("""SELECT DISTINCT ?country {
@@ -29,10 +31,11 @@ def find_country_in_dbpedia(graph, tokens):
             ?country a dbpedia-owl:Country .
             {
                 ?name_uri dbpedia-owl:wikiPageRedirects ?country ;
-                        rdfs:label ?search .
+                        rdfs:label ?label .
             }
             UNION
-            { ?country rdfs:label ?search }
+            { ?country rdfs:label ?label }
+            FILTER(STR(?label) = ?search)
         }""")
         return [row[0] for row in results]
     except HTTPError as er:
@@ -41,7 +44,7 @@ def find_country_in_dbpedia(graph, tokens):
 
 
 def find_countries_in_text(graph, text):
-    country_cands = re.findall('[,\n]{1}([ ]*[A-Za-z]+[A-Za-z -]*)\n', text, re.I)
+    country_cands = re.findall('[,\n-]{1}([ ]*[A-Za-z]+[A-Za-z -]*)\n', text, re.I)
     #print country_cands
     return find_country_in_dbpedia(graph, country_cands)
 
@@ -78,12 +81,7 @@ class PDFParser(Parser):
     def __init__(self, grab, task, graph, spider=None):
         Parser.__init__(self, grab, task, graph, spider=spider)
         #DBPedia SPARQL Endpoint
-        # self.dbpedia = Graph('SPARQLStore', namespace_manager=self.graph.namespace_manager)
-        # self.dbpedia.open('http://dbpedia.org/sparql')
-
-        #DBPedia's dump of countries and universities
-        self.dbpedia = Graph(SPARQLStore(config.sparqlstore['url'] + "/repositories/" +
-                                         config.sparqlstore['dbpedia_dump'],
+        self.dbpedia = Graph(SPARQLStore(config.sparqlstore['dbpedia_url'],
                                          context_aware=False), namespace_manager=self.graph.namespace_manager)
 
     def write(self):

@@ -504,13 +504,7 @@ class JointWorkshopsEditorsParser(Parser):
 class EditorAffiliationParser(Parser):
     def __init__(self, grab, task, graph, spider=None):
         Parser.__init__(self, grab, task, graph, spider=spider)
-        #DBPedia SPARQL Endpoint
-        # self.dbpedia = Graph('SPARQLStore', namespace_manager=self.graph.namespace_manager)
-        # self.dbpedia.open('http://dbpedia.org/sparql')
-
-        #DBPedia's dump of countries and universities
-        self.dbpedia = Graph(SPARQLStore(config.sparqlstore['url'] + "/repositories/" +
-                                         config.sparqlstore['dbpedia_dump'],
+        self.dbpedia = Graph(SPARQLStore(config.sparqlstore['dbpedia_url'],
                                          context_aware=False), namespace_manager=self.graph.namespace_manager)
 
     def begin_template(self):
