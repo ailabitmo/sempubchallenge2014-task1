@@ -36,7 +36,7 @@ mappings = dict(
         ],
         'publication': [
             PublicationNumOfPagesParser,
-			PDFParser
+            PDFParser
         ]
     }
 )
@@ -48,11 +48,6 @@ class CEURSpider(Spider):
         self.setup_grab(timeout=240)
         self.publication_results_done = 0
         self.publication_results_failed = 0
-        # self.repo = rdflib.Graph(sparqlstore.SPARQLUpdateStore(
-        #     queryEndpoint=config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'],
-        #     update_endpoint=config.sparqlstore['url'] + "/repositories/" +
-        #                     config.sparqlstore['repository'] + "/statements",
-        #     context_aware=False))
         self.repo = rdflib.Graph(store='default')
         self.repo.bind('foaf', FOAF)
         self.repo.bind('swc', SWC)
@@ -92,14 +87,6 @@ class CEURSpider(Spider):
         f = open('rdfdb.ttl', 'w')
         self.repo.serialize(f, format='turtle')
         self.repo.close()
-
-    # def task_workshop(self, grab, task):
-    #     try:
-    #         publication_parser.parse_publications(self, grab, task)
-    #         self.publication_results_done += 1
-    #     except:
-    #         self.validate.write(task.url + '\n')
-    #         self.publication_results_failed += 1
 
     def print_stats(self):
         print "Publications done:", self.publication_results_done

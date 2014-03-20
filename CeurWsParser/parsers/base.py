@@ -10,6 +10,10 @@ def create_proceedings_uri(volume_number):
     return URIRef("http://ceur-ws.org/Vol-%s/" % volume_number)
 
 
+def create_publication_uri(proceedings_url, file_name):
+    return URIRef('%s#%s' % (proceedings_url, file_name))
+
+
 class NoTemplateError(Exception):
     pass
 

@@ -14,13 +14,9 @@ from rdflib import URIRef, Literal
 from rdflib.namespace import RDF, RDFS, FOAF, DCTERMS, DC, XSD
 from PyPDF2 import PdfFileReader
 
-from CeurWsParser.parsers.base import Parser, create_proceedings_uri
+from CeurWsParser.parsers.base import Parser, create_proceedings_uri, create_publication_uri
 from CeurWsParser.namespaces import SWRC, BIBO, SWC
 from CeurWsParser import config
-
-
-def create_publication_uri(proceedings_url, file_name):
-    return URIRef('%s#%s' % (proceedings_url, file_name))
 
 
 class PublicationParser(Parser):
@@ -47,27 +43,6 @@ class PublicationParser(Parser):
             return True
         else:
             return False
-
-    @staticmethod
-    def get_num_of_pages(link, name):
-        try:
-            if link.endswith('.pdf'):
-                file_name = "%s/%s" % (tempfile.gettempdir(), name)
-                try:
-                    urllib.urlretrieve(link, file_name)
-                    pdf = PdfFileReader(file_name)
-                    nop = pdf.getNumPages()
-                    return nop
-                except:
-                    print "[PublicationParser] Error parse %s %s" % (link, name)
-                    #traceback.print_exc()
-                    return None
-                finally:
-                    os.remove(file_name)
-            elif link.endswith('.ps'):
-                pass
-        except:
-            pass
 
     def write(self):
         print "[TASK %s][PublicationParser] Count of publications: %s" % (self.task.url, len(self.data['publications']))
