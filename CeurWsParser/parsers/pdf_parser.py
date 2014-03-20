@@ -20,6 +20,7 @@ from CeurWsParser.namespaces import SWRC, DBPEDIAOWL
 
 
 def find_country_in_dbpedia(graph, tokens):
+    print tokens
     values = ' '.join(['"' + token.strip() + '"' for token in tokens])
     try:
         results = graph.query("""SELECT DISTINCT ?country {
@@ -41,6 +42,7 @@ def find_country_in_dbpedia(graph, tokens):
 
 
 def find_university_in_dbpedia(graph, tokens):
+    print tokens
     values = ' '.join(['"' + token.strip() + '"' for token in tokens])
     try:
         results = graph.query("""SELECT DISTINCT ?university {
@@ -61,9 +63,8 @@ def find_university_in_dbpedia(graph, tokens):
     return []
 
 
-
 def find_countries_in_text(graph, text):
-    country_cands = re.findall('[,\n]{1}([ ]*[A-Za-z]+[A-Za-z -]*)\n', text)
+    country_cands = re.findall('[,\n]{1}([ ]*[A-Za-z]+[A-Za-z -]*)\n', text, re.I)
     #print country_cands
     return find_country_in_dbpedia(graph, country_cands)
 
@@ -91,9 +92,9 @@ def convert_pdf_to_txt(path):
         interpreter.process_page(page)
     fp.close()
     device.close()
-    str = retstr.getvalue()
+    result = retstr.getvalue()
     retstr.close()
-    return str
+    return result
 
 
 class PDFParser(Parser):
@@ -107,7 +108,6 @@ class PDFParser(Parser):
         self.dbpedia = Graph(SPARQLStore(config.sparqlstore['url'] + "/repositories/" +
                                          config.sparqlstore['dbpedia_dump'],
                                          context_aware=False), namespace_manager=self.graph.namespace_manager)
-
 
     def write(self):
         print "[TASK %s][PDFParser] Count of countries: %s. Count of universities %s" % (
@@ -123,7 +123,7 @@ class PDFParser(Parser):
         publication = None
         for row in results:
             publication = row[0]
-            break
+            breakz
         if publication is not None:
             for country in self.data['countries']:
                 triples.append((publication, DBPEDIAOWL.country, URIRef(country)))
@@ -139,8 +139,9 @@ class PDFParser(Parser):
             try:
                 self.grab.response.save(self.data['file_location'])
                 first_page = convert_pdf_to_txt(self.data['file_location'])
-                end = first_page.find('Abstract.')
+                end = re.search(r'Abstract|Introduction', first_page, re.I).start(0)
                 title = first_page[:end]
+                print title
                 self.data['countries'] = find_countries_in_text(self.dbpedia, title)
                 self.data['universities'] = find_universities_in_text(self.dbpedia, title)
 
