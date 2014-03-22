@@ -1,9 +1,33 @@
-#Required modules:
+#How to configure and run the parser
 
+##Required modules:
+The following Python modules need to installed:
  - RDFLib (https://github.com/RDFLib/rdflib),
  - PDFMiner (http://www.unixuser.org/~euske/python/pdfminer/),
  - Grab (http://grablib.org/),
  - PyPDF2 (https://github.com/mstamy2/PyPDF2).
+
+##Configuration
+All configuration settings should be in ``config.py`` file which should be created from ``config.py.example`` by renaming it.
+
+###Input urls
+The list of input urls are set as a Python list to ``input_urls`` variable.
+
+###DBpedia dataset (with countries and universities)
+Parser uses [DBpedia](http://dbpedia.org/) to extract the names of countries and univeristies, and their URIs in DBpedia.
+
+There are three options:
+ - to use the original dataset. It's by default, nothing should be configured,
+ - to use the [OpenLink's mirror](http://dbpedia.org/), then the ``sparqlstore['dbpedia_url']`` should be changed to ``http://lod.openlinksw.com/sparql``,
+ - to use a local dump, it's prefered option, because it should be much faster and more stable. The ``sparqlstore['dbpedia_url']`` should be set to the local SPARQL Endpoint and the RDF files ``dumps/dbpedia_country.xml`` and ``dumps/dbpedia_universities.xml`` should be uploaded to it.
+
+###Run
+
+Once you finished with the configuration you need just to execute the following script:
+
+``
+python CeurWsParser/spider.py
+``
  
 #Contacts
 
