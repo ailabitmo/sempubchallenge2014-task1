@@ -64,7 +64,7 @@ def main(test):
     number_of_failed_with_exception = 0
 
     graph = Graph(
-        sparqlstore.SPARQLStore(config.sparqlstore['url'] + "/repositories/" + config.sparqlstore['repository'],
+        sparqlstore.SPARQLStore(config.sparqlstore['sesame_url'],
                                 context_aware=False))
     graph.bind('foaf', FOAF)
     graph.bind('xsd', XSD)
