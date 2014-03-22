@@ -8,9 +8,9 @@ from grab.error import DataNotFound
 from rdflib import URIRef, Literal
 from rdflib.namespace import RDF, RDFS, XSD, FOAF, DCTERMS, DC, SKOS
 
-from CeurWsParser.namespaces import SWRC
-from CeurWsParser.parsers.base import Parser, create_proceedings_uri
-from CeurWsParser import config
+from namespaces import SWRC
+from base import Parser, create_proceedings_uri
+import config
 
 
 class ProceedingsSummaryParser(Parser):

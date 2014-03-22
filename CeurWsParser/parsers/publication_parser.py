@@ -14,9 +14,9 @@ from rdflib import URIRef, Literal
 from rdflib.namespace import RDF, RDFS, FOAF, DCTERMS, DC, XSD
 from PyPDF2 import PdfFileReader
 
-from CeurWsParser.parsers.base import Parser, create_proceedings_uri, create_publication_uri
-from CeurWsParser.namespaces import SWRC, BIBO, SWC
-from CeurWsParser import config
+from base import Parser, create_proceedings_uri, create_publication_uri
+from namespaces import SWRC, BIBO, SWC
+import config
 
 
 class PublicationParser(Parser):

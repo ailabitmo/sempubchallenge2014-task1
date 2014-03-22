@@ -8,10 +8,10 @@ from rdflib import URIRef, Literal, Graph
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 from rdflib.namespace import RDF, RDFS, XSD, FOAF
 
-from CeurWsParser.parsers.base import Parser, ListParser, create_proceedings_uri, find_university_in_dbpedia
-from CeurWsParser import config
-from CeurWsParser.parsers import utils
-from CeurWsParser.namespaces import BIBO, TIMELINE, SWC, SWRC, SKOS
+from base import Parser, ListParser, create_proceedings_uri, find_university_in_dbpedia
+import config
+import utils
+from namespaces import BIBO, TIMELINE, SWC, SWRC, SKOS
 
 
 XPATH_SUMMARY = '/html/body/table[last()]/tr[td]'

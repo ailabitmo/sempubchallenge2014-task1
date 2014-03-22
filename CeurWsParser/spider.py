@@ -8,11 +8,11 @@ from grab.tools.logs import default_logging
 import rdflib
 from rdflib.namespace import FOAF, DC, DCTERMS
 
-from CeurWsParser.namespaces import BIBO, SWRC, TIMELINE, SWC, SKOS, DBPEDIAOWL
-from CeurWsParser.parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, \
+from namespaces import BIBO, SWRC, TIMELINE, SWC, SKOS, DBPEDIAOWL
+from parsers import WorkshopSummaryParser, WorkshopPageParser, ProceedingsSummaryParser, \
     PublicationParser, ProceedingsRelationsParser, PDFParser, WorkshopAcronymParser, WorkshopRelationsParser, \
     JointWorkshopsEditorsParser, PublicationNumOfPagesParser, EditorAffiliationParser
-from CeurWsParser import config
+import config
 
 
 mappings = dict(

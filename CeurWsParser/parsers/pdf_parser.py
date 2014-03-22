@@ -14,9 +14,9 @@ from pdfminer.pdfpage import PDFPage
 from rdflib import URIRef, Graph
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
-from CeurWsParser import config
-from CeurWsParser.parsers.base import Parser, find_university_in_dbpedia
-from CeurWsParser.namespaces import SWRC, DBPEDIAOWL
+import config
+from base import Parser, find_university_in_dbpedia
+from namespaces import SWRC, DBPEDIAOWL
 
 
 def find_country_in_dbpedia(graph, tokens):
