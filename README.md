@@ -28,6 +28,8 @@ Once you finished with the configuration you need just to execute the following 
 ``
 python CeurWsParser/spider.py
 ``
+
+The dataset will be in ``rdfdb.ttl`` file.
  
 #Contacts
 
