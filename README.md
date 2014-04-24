@@ -32,6 +32,7 @@ python CeurWsParser/spider.py
 #Contacts
 
 Maxim Kolchin (kolchinmax@gmail.com)
+
 Fedor Kozlov (kozlovfedor@gmail.com)
 
 #Queries
@@ -254,14 +255,14 @@ Prefixes that are used in the queries:
           VALUES ?proc {
             <http://ceur-ws.org/Vol-1049/>
           }
-          ?proc bibo:presentedAt|bibo:presentedAt/skos:related ?workshop .
+          ?proc bibo:presentedAt|bibo:presentedAt/rdfs:seeAlso ?workshop .
           { ?workshop timeline:atDate ?date . }
           UNION
           { ?workshop timeline:beginsAtDateTime ?date . }
         }
         GROUP BY ?proc
       }
-      ?proc bibo:presentedAt|bibo:presentedAt/skos:related ?workshop .
+      ?proc bibo:presentedAt|bibo:presentedAt/rdfs:seeAlso ?workshop .
       ?workshop rdfs:label ?name .
       { ?workshop timeline:atDate ?date . }
       UNION
@@ -282,8 +283,8 @@ Prefixes that are used in the queries:
       ?workshop swc:isSubEventOf ?conf .
       ?proc bibo:presentedAt ?workshop .
       FILTER( ?conf_name = ?acrn && STR(YEAR(?conf_date)) = ?year )
-      FILTER EXISTS { ?workshop skos:related [] . }
-      FILTER NOT EXISTS { [] skos:related ?workshop . }
+      FILTER EXISTS { ?workshop rdfs:seeAlso [] . }
+      FILTER NOT EXISTS { [] rdfs:seeAlso ?workshop . }
     }
 
 ####Q1.14: Identify the papers of the workshop titled T (which was published in a joint volume V with other workshops)
@@ -324,7 +325,7 @@ Prefixes that are used in the queries:
             timeline:atDate ?cr_date .
       ?w a bibo:Workshop ;
          swc:isSubEventOf ?c .
-      ?wr skos:related ?w ;
+      ?wr rdfs:seeAlso ?w ;
           swc:isSubEventOf ?cr .
       ?p a swrc:Proceedings ;
          bibo:presentedAt ?w .
@@ -357,7 +358,7 @@ Prefixes that are used in the queries:
                 timeline:atDate ?cr_date .
           ?w a bibo:Workshop ;
              swc:isSubEventOf ?c .
-          ?wr skos:related ?w ;
+          ?wr rdfs:seeAlso ?w ;
               swc:isSubEventOf ?cr .
           ?p a swrc:Proceedings ;
              bibo:presentedAt ?w .
@@ -400,11 +401,11 @@ Prefixes that are used in the queries:
         SELECT ?w (MAX(?date) AS ?prev_date) {
           ?wr a bibo:Workshop ;
               timeline:atDate | timeline:beginsAtDateTime ?date .
-          ?w skos:related ?wr .
+          ?w rdfs:seeAlso ?wr .
         }
         GROUP BY ?w
       }
-      ?w skos:related ?wr .
+      ?w rdfs:seeAlso ?wr .
       ?wr timeline:atDate | timeline:beginsAtDateTime ?wr_date ;
           swc:isSubEventOf ?cr .
       ?cr a swc:OrganizedEvent ;
@@ -462,5 +463,3 @@ Prefixes that are used in the queries:
             swrc:affiliation ?affiliation .
       ?pub swrc:affiliation ?affiliation .
     }
-
- 

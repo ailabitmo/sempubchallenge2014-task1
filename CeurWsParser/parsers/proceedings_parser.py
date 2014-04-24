@@ -53,7 +53,7 @@ class ProceedingsSummaryParser(Parser):
         for proceedings in self.data['proceedings_list']:
             resource = URIRef(proceedings['url'])
             triples.append((resource, RDF.type, SWRC.Proceedings))
-            triples.append((resource, RDFS.label, Literal(proceedings['label'], datatype=XSD.string)))
+            triples.append((resource, DC.title, Literal(proceedings['label'], datatype=XSD.string)))
             triples.append((resource, FOAF.homepage, Literal(proceedings['url'], datatype=XSD.anyURI)))
             triples.append((
                 resource,
@@ -106,5 +106,5 @@ class ProceedingsRelationsParser(Parser):
                     #     # self.spider.add_task(Task('initial', url=related_url))
 
                     related_resource = create_proceedings_uri(related)
-                    triples.append((resource, SKOS.related, related_resource))
+                    triples.append((resource, RDFS.seeAlso, related_resource))
         self.write_triples(triples)

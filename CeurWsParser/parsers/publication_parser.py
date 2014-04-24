@@ -58,7 +58,7 @@ class PublicationParser(Parser):
             triples.append((resource, RDF.type, FOAF.Document))
             triples.append((resource, DCTERMS.partOf, proceedings))
             triples.append((resource, RDF.type, SWRC.InProceedings))
-            triples.append((resource, RDFS.label, Literal(publication['name'], datatype=XSD.string)))
+            triples.append((resource, DC.title, Literal(publication['name'], datatype=XSD.string)))
             triples.append((resource, FOAF.homepage, Literal(publication['link'], datatype=XSD.anyURI)))
             if publication['is_invited']:
                 triples.append((resource, RDF.type, SWC.InvitedPaper))
@@ -261,8 +261,9 @@ class PublicationNumOfPagesParser(Parser):
         try:
             self.begin_template()
             if self.task.url.endswith('.pdf'):
-                pdf = PdfFileReader(self.data['file_location'])
-                self.data['num_of_pages'] = pdf.getNumPages()
+                with open(self.data['file_location'], 'rb') as f:
+                    pdf = PdfFileReader(f)
+                    self.data['num_of_pages'] = pdf.getNumPages()
             else:
                 raise DataNotFound()
         finally:

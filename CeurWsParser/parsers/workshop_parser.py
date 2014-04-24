@@ -389,7 +389,7 @@ class WorkshopRelationsParser(ListParser):
         triples = []
         proceedings = create_proceedings_uri(self.data['volume_number'])
         workshops = self.graph.objects(proceedings, BIBO.presentedAt)
-        proceedings_related = self.graph.objects(proceedings, SKOS.related)
+        proceedings_related = self.graph.objects(proceedings, RDFS.seeAlso)
         workshops_related = []
         for p_related in proceedings_related:
             map(workshops_related.append, self.graph.objects(p_related, BIBO.presentedAt))
@@ -397,7 +397,7 @@ class WorkshopRelationsParser(ListParser):
         for workshop in workshops:
             for workshop_related in workshops_related:
                 if self.is_related(workshop, workshop_related):
-                    triples.append((workshop, SKOS.related, workshop_related))
+                    triples.append((workshop, RDFS.seeAlso, workshop_related))
 
         self.write_triples(triples)
 
