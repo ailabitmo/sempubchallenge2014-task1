@@ -1,4 +1,5 @@
 import inspect
+import config
 from urllib2 import HTTPError
 
 from grab.error import DataNotFound
@@ -58,20 +59,25 @@ class Parser:
 
     def parse(self):
         parsed = False
+        parsed_method = ''
         for method in inspect.getmembers(self, predicate=inspect.ismethod):
             method_name = method[0]
             if method_name.startswith('parse_template_'):
                 try:
                     eval('self.' + method_name + '()')
                     parsed = True
+                    parsed_method = method_name
                     break
                 except DataNotFound:
                     # traceback.print_exc()
                     pass
         if not parsed:
+            print "[TASK %s][PARSER %s] proper parser method hasn't been found" % (self.task.url, self.__class__.__name__)
             if self.failonerror:
                 raise NoTemplateError("%s" % self.task.url)
         else:
+            if config.DEBUG:
+                print "[TASK %s][PARSER %s] with %s" % (self.task.url, self.__class__.__name__, parsed_method)
             self.write()
 
     def write(self):
@@ -130,22 +136,28 @@ class ListParser(Parser):
         for method in inspect.getmembers(self, predicate=inspect.ismethod):
             if method[0].startswith('parse_template_'):
                 methods.append(method[0])
-
+        if not self.list:
+            print "[TASK %s][PARSER %s] nothing to extract!" % (self.task.url, self.__class__.__name__)
         for element in self.list:
             try:
                 parsed = False
+                parsed_method = ''
                 for method in methods:
                     try:
                         eval('self.%s(element)' % method)
                         parsed = True
+                        parsed_method = method
                         break
                     except DataNotFound:
                         # traceback.print_exc()
                         pass
                 if not parsed:
+                    print "[TASK %s][PARSER %s] proper parser method hasn't been found" % (self.task.url, self.__class__.__name__)
                     if self.failonerror:
                         raise NoTemplateError("%s" % self.task.url)
                 else:
+                    if config.DEBUG:
+                        print "[TASK %s][PARSER %s] with %s" % (self.task.url, self.__class__.__name__, parsed_method)
                     self.write()
             except NoTemplateError:
-                print "Can't parse %s" % element
+                print "[PARSER %s] Can't parse %s" % (self.__class__.__name__, element)

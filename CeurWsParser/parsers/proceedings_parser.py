@@ -12,14 +12,14 @@ from namespaces import SWRC
 from base import Parser, create_proceedings_uri
 import config
 
+XPATH_SUMMARY = '/html/body/table[position()>1]//tr[td]'
 
 class ProceedingsSummaryParser(Parser):
-    XPATH_SUMMARY = '/html/body/table[last()]/tr[td]'
     XPATH_SUMMARY_TITLE = './/td[last()]//a[@href]'
 
     def parse_template_main(self):
         proceedings_list = []
-        tr = self.grab.tree.xpath(self.XPATH_SUMMARY)
+        tr = self.grab.tree.xpath(XPATH_SUMMARY)
         for i in range(0, len(tr), 2):
             href = tr[i].find(self.XPATH_SUMMARY_TITLE)
             try:
@@ -77,7 +77,7 @@ class ProceedingsRelationsParser(Parser):
     """
 
     def parse_template_main(self):
-        tr = self.grab.tree.xpath('/html/body/table[last()]/tr[td]')
+        tr = self.grab.tree.xpath(XPATH_SUMMARY)
         self.data['proceedings'] = []
         for i in range(0, len(tr), 2):
             proceedings_url = tr[i].find('.//td[last()]//a[@href]').get('href')

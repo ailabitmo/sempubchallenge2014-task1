@@ -14,7 +14,7 @@ import utils
 from namespaces import BIBO, TIMELINE, SWC, SWRC, SKOS
 
 
-XPATH_SUMMARY = '/html/body/table[last()]/tr[td]'
+XPATH_SUMMARY = '/html/body/table[position()>1]//tr[td]'
 XPATH_SUMMARY_TITLE = './/td[last()]//a[@href]'
 
 

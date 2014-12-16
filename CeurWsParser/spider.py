@@ -69,10 +69,11 @@ class CEURSpider(Spider):
                     self.add_task(Task('initial', url=url, priority=1))
 
     def task_initial(self, grab, task):
-        print "[TASK %s] started" % task.url
         for url_rex in mappings['url_mappings']:
             if re.match(url_rex, task.url, re.I):
                 value = mappings['url_mappings'][url_rex]
+                if mappings['parser_mappings'][value]:
+                    print "[TASK %s] ==== started ====" % task.url
                 for parser in mappings['parser_mappings'][value]:
                     p = parser(grab, task, self.repo, spider=self)
                     try:
@@ -82,6 +83,8 @@ class CEURSpider(Spider):
                         import traceback
 
                         traceback.print_exc()
+                if mappings['parser_mappings'][value]:
+                    print "[TASK %s] ==== finished ====" % task.url
 
     def shutdown(self):
         Spider.shutdown(self)
