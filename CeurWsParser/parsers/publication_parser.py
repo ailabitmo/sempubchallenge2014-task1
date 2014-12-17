@@ -236,10 +236,10 @@ class PublicationParser(Parser):
 
     @staticmethod
     def check_for_workshop_paper(publication):
-        if rex.rex(publication['name'], r'.*(preface|overview|introduction|einleitung).*', re.I, default=None):
+        if rex.rex(publication['name'].strip(), r'^(preface|overview|introduction|einleitung|foreword)$', re.I, default=None):
             return False
-        # if not publication['link'].endswith('.pdf'):
-        #     return False
+        if not publication['link'].endswith('.pdf'):
+            return False
         return True
 
 
