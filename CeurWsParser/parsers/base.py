@@ -1,4 +1,5 @@
 import inspect
+import urllib
 import config
 from urllib2 import HTTPError
 
@@ -13,6 +14,9 @@ def create_proceedings_uri(volume_number):
 
 def create_publication_uri(proceedings_url, file_name):
     return URIRef('%s#%s' % (proceedings_url, file_name))
+
+def create_conference_uri(conf_acronym, conf_year):
+    return URIRef(config.id['conference'] + urllib.quote(conf_acronym + "-" + conf_year))
 
 
 def find_university_in_dbpedia(graph, tokens):

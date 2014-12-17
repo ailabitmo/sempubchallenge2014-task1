@@ -8,7 +8,7 @@ from rdflib import URIRef, Literal, Graph
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 from rdflib.namespace import RDF, RDFS, XSD, FOAF
 
-from base import Parser, ListParser, create_proceedings_uri, find_university_in_dbpedia
+from base import Parser, ListParser, create_proceedings_uri, find_university_in_dbpedia, create_conference_uri
 import config
 import utils
 from namespaces import BIBO, TIMELINE, SWC, SWRC, SKOS
@@ -200,6 +200,35 @@ class WorkshopSummaryParser(ListParser):
         self.add_workshop(workshop_3)
 
     def parse_template_5(self, element):
+        """
+        A template for a workshop with the conference acronym and year in the name
+
+        Examples:
+            - http://ceur-ws.org/Vol-958/
+        """
+        workshop = {}
+        title = rex.rex(element[1], r'(.*)Edited\s*by.*', re.I | re.S).group(1)
+
+        workshop['volume_number'] = WorkshopSummaryParser.extract_volume_number(element[0].get('href'))
+        label_part = rex.rex(element[0].text, r'(.*)\sat\s(\w{2,})\s(\d{4})[\s\.]*', re.I | re.S)
+        workshop['label'] = label_part.group(1)
+        workshop['conf_acronym'] = label_part.group(2)
+        workshop['conf_year'] = label_part.group(3)
+        workshop['url'] = element[0].get('href')
+        workshop['time'] = utils.parse_date(title)
+        try:
+            workshop['edition'] = tonumber(
+                rex.rex(title,
+                        r'.*Proceedings(\s*of)?(\s*the)?\s*(\d{1,}|first|second|third|forth|fourth|fifth)[thrd]*'
+                        r'.*Workshop.*',
+                        re.I, default=None).group(3))
+        except:
+            #'edition' property is optional
+            pass
+
+        self.add_workshop(workshop)
+
+    def parse_template_6(self, element):
         workshop = {}
         title = rex.rex(element[1], r'(.*)Edited\s*by.*', re.I | re.S).group(1)
 
@@ -255,6 +284,15 @@ class WorkshopSummaryParser(ListParser):
                     resource,
                     TIMELINE.atDate,
                     Literal(workshop['time'][0].strftime('%Y-%m-%d'), datatype=XSD.date)))
+
+            #For parse_template_5
+            if 'conf_acronym' in workshop and 'conf_year' in workshop:
+                conference = create_conference_uri(workshop['conf_acronym'], workshop['conf_year'])
+                triples.append((conference, RDF.type, SWC.OrganizedEvent))
+                triples.append((conference, RDFS.label, Literal(workshop['conf_acronym'], datatype=XSD.string)))
+                triples.append((conference, TIMELINE.atDate, Literal(workshop['conf_year'], datatype=XSD.gYear)))
+                triples.append((resource, SWC.isSubEventOf, conference))
+
         self.write_triples(triples)
 
 
