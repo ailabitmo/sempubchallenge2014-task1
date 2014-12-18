@@ -66,7 +66,7 @@ class PublicationParser(Parser):
                 agent = URIRef(config.id['person'] + urllib.quote(editor.encode('utf-8')))
                 triples.append((agent, RDF.type, FOAF.Agent))
                 triples.append((agent, FOAF.name, Literal(editor, datatype=XSD.string)))
-                triples.append((agent, DC.creator, resource))
+                triples.append((resource, DC.creator, agent))
             if 'presentedAt' in publication and len(publication['presentedAt']) > 0:
                 for w in publication['presentedAt']:
                     triples.append((resource, BIBO.presentedAt, w))
