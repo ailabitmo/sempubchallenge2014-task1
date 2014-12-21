@@ -84,7 +84,7 @@ class PublicationParser(Parser):
                 editors = []
                 for publication_editor in publication.findall('span/span[@rel="dcterms:creator"]'):
                     publication_editor_name = publication_editor.find('span[@property="foaf:name"]').text_content()
-                    editors.append(publication_editor_name)
+                    editors.append(clean_string(publication_editor_name))
                 file_name = publication_link.rsplit('.pdf')[0].rsplit('/')[-1]
                 publication_object = {
                     'name': name,
@@ -119,7 +119,7 @@ class PublicationParser(Parser):
                 link = href if href.startswith('http://') else self.task.url + href
                 editors = []
                 for editor_name in element.find_class('CEURAUTHORS')[0].text_content().split(","):
-                    editors.append(editor_name.strip())
+                    editors.append(clean_string(editor_name.strip()))
                 file_name = link.rsplit('.pdf')[0].rsplit('/')[-1]
                 publication_object = {
                     'name': name,
@@ -176,7 +176,7 @@ class PublicationParser(Parser):
                 editors_tag_content = re.sub(r'\s*[,\s]*and\s+', ',', editors_tag_content, flags=re.I | re.S)
 
                 for publication_editor_name in editors_tag_content.split(","):
-                    editors.append(publication_editor_name.strip())
+                    editors.append(clean_string(publication_editor_name.strip()))
                 file_name = link.rsplit('.pdf')[0].rsplit('/')[-1]
                 publication_object = {
                     'name': name,
@@ -210,7 +210,7 @@ class PublicationParser(Parser):
                     editors_tag_content = re.sub(r'\s*[,\s]*and\s+', ',', editors_tag_content, flags=re.I | re.S)
 
                     for publication_editor_name in editors_tag_content.split(","):
-                        editors.append(publication_editor_name.strip())
+                        editors.append(clean_string(publication_editor_name.strip()))
                     file_name = link.rsplit('.pdf')[0].rsplit('/')[-1]
                     publication_object = {
                         'name': name,
