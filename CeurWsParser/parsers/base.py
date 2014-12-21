@@ -42,6 +42,12 @@ def find_university_in_dbpedia(graph, tokens):
         pass
     return []
 
+def clean_string(str):
+    """
+    Removes tabs and newlines from the given string
+    """
+    return str.replace('\r', '').replace('\n','')
+
 
 class NoTemplateError(Exception):
     pass

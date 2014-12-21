@@ -14,7 +14,7 @@ from rdflib import URIRef, Literal
 from rdflib.namespace import RDF, RDFS, FOAF, DCTERMS, DC, XSD
 from PyPDF2 import PdfFileReader
 
-from base import Parser, create_proceedings_uri, create_publication_uri
+from base import Parser, create_proceedings_uri, create_publication_uri, clean_string
 from namespaces import SWRC, BIBO, SWC
 import config
 
@@ -79,7 +79,7 @@ class PublicationParser(Parser):
 
         for publication in self.grab.tree.xpath('//div[@class="CEURTOC"]/*[@rel="dcterms:hasPart"]/li'):
             try:
-                name = publication.find('a[@typeof="bibo:Article"]/span').text_content()
+                name = clean_string(publication.find('a[@typeof="bibo:Article"]/span').text_content())
                 publication_link = publication.find('a[@typeof="bibo:Article"]').get('href')
                 editors = []
                 for publication_editor in publication.findall('span/span[@rel="dcterms:creator"]'):
@@ -114,7 +114,7 @@ class PublicationParser(Parser):
                                             'descendant-or-self::*[@class="CEURAUTHORS"] and '
                                             'descendant-or-self::*[@class="CEURTITLE"]]'):
             try:
-                name = element.find_class('CEURTITLE')[0].text
+                name = clean_string(element.find_class('CEURTITLE')[0].text)
                 href = element.find('a').get('href')
                 link = href if href.startswith('http://') else self.task.url + href
                 editors = []
@@ -159,7 +159,7 @@ class PublicationParser(Parser):
 
         for publication in elements:
             try:
-                name = publication.find('a').text_content()
+                name = clean_string(publication.find('a').text_content())
                 link = publication.find('a').get('href')
                 editors = []
                 editors_tag = None
@@ -201,7 +201,7 @@ class PublicationParser(Parser):
         for publication in self.grab.tree.xpath('/html/body//a[@href and '
                                                 'preceding::*[contains(.,"Table of Contents")]]'):
             try:
-                name = publication.text_content()
+                name = clean_string(publication.text_content())
                 link = publication.get('href')
                 editors = []
 
