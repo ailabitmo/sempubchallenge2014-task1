@@ -184,13 +184,12 @@ class PublicationParser(Parser):
                 editors = []
                 editors_tag = None
                 if publication.find('i') is not None:
-                    editors_tag = publication.find('i')
+                    editors_tag = publication.findall('i')[-1]
                 elif publication.find('em') is not None:
                     editors_tag = publication.find('em')
 
                 if editors_tag is None:
                     editors_tag_content = publication.find('br').tail
-                    print publication.find('br').tail
                 else:
                     editors_tag_content = editors_tag.text_content()
 
@@ -216,7 +215,7 @@ class PublicationParser(Parser):
                 if self.check_for_workshop_paper(publication_object):
                     publications.append(publication_object)
             except Exception as ex:
-                traceback.print_exc()
+                #traceback.print_exc()
                 raise DataNotFound(ex)
 
         self.data['publications'] = publications
