@@ -115,15 +115,21 @@ class PublicationParser(Parser):
                                             'descendant-or-self::*[@class="CEURAUTHORS"] and '
                                             'descendant-or-self::*[@class="CEURTITLE"]]'):
             try:
-                name = clean_string(element.find_class('CEURTITLE')[0].text)
+                name_el = element.find_class('CEURTITLE')[0]
+                name = clean_string(name_el.text_content()).strip()
+                if name is None or not name:
+                    # In case of unclosed span element with the author list
+                    # Example: http://ceur-ws.org/Vol-640
+                    name = clean_string(name_el.tail)
                 href = element.find('a').get('href')
                 link = href if href.startswith('http://') else self.task.url + href
                 editors = []
-                editors_list = clean_string(element.find_class('CEURAUTHORS')[0].text_content())
+                editors_list_el = element.find_class('CEURAUTHORS')[0]
+                editors_list = clean_string(editors_list_el.text_content())
                 if not editors_list:
                     # In case of unclosed span element with the author list
                     # Example: http://ceur-ws.org/Vol-1043
-                    editors_list = element.find_class('CEURAUTHORS')[0].tail
+                    editors_list = clean_string(editors_list_el.tail)
 
                 for editor_name in editors_list.split(","):
                     editor_name = clean_string(editor_name.strip())
@@ -198,7 +204,7 @@ class PublicationParser(Parser):
                     pen = clean_string(publication_editor_name.strip())
                     if pen:
                         editors.append(pen)
-                        
+
                 file_name = link.rsplit('.pdf')[0].rsplit('/')[-1]
                 publication_object = {
                     'name': name,

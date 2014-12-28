@@ -46,7 +46,10 @@ def clean_string(str):
     """
     Removes tabs and newlines from the given string
     """
-    return str.replace('\r', '').replace('\n','')
+    if str is None:
+        return None
+    else:
+        return str.replace('\r', '').replace('\n','')
 
 
 class NoTemplateError(Exception):
