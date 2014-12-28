@@ -105,6 +105,7 @@ class PublicationParser(Parser):
         """
         Examples:
             - http://ceur-ws.org/Vol-1008/
+            - http://ceur-ws.org/Vol-1043/
         """
 
         self.begin_template()
@@ -118,8 +119,21 @@ class PublicationParser(Parser):
                 href = element.find('a').get('href')
                 link = href if href.startswith('http://') else self.task.url + href
                 editors = []
-                for editor_name in element.find_class('CEURAUTHORS')[0].text_content().split(","):
-                    editors.append(clean_string(editor_name.strip()))
+                editors_list = clean_string(element.find_class('CEURAUTHORS')[0].text_content())
+                if not editors_list:
+                    # In case of unclosed span element with the author list
+                    # Example: http://ceur-ws.org/Vol-1043
+                    editors_list = element.find_class('CEURAUTHORS')[0].tail
+
+                for editor_name in editors_list.split(","):
+                    editor_name = clean_string(editor_name.strip())
+                    if editor_name:
+                        editors.append(editor_name)
+
+                if not editors:
+                    #a publication should have non-empty list of authors
+                    raise DataNotFound(link)
+
                 file_name = link.rsplit('.pdf')[0].rsplit('/')[-1]
                 publication_object = {
                     'name': name,
@@ -170,13 +184,21 @@ class PublicationParser(Parser):
 
                 if editors_tag is None:
                     editors_tag_content = publication.find('br').tail
+                    print publication.find('br').tail
                 else:
                     editors_tag_content = editors_tag.text_content()
 
-                editors_tag_content = re.sub(r'\s*[,\s]*and\s+', ',', editors_tag_content, flags=re.I | re.S)
+                editors_tag_content = re.sub(r'\s*[,\s]*and\s+', ',', editors_tag_content, flags=re.I | re.S).strip()
+
+                if not editors_tag_content:
+                    #a publication should have non-empty list of authors
+                    raise DataNotFound(link)
 
                 for publication_editor_name in editors_tag_content.split(","):
-                    editors.append(clean_string(publication_editor_name.strip()))
+                    pen = clean_string(publication_editor_name.strip())
+                    if pen:
+                        editors.append(pen)
+                        
                 file_name = link.rsplit('.pdf')[0].rsplit('/')[-1]
                 publication_object = {
                     'name': name,
