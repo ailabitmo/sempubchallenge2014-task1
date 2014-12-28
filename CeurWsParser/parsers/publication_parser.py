@@ -180,6 +180,9 @@ class PublicationParser(Parser):
         for publication in elements:
             try:
                 name = clean_string(publication.find('a').text_content())
+                if rex.rex(name, r'.*(preface|first\s+pages|author\s+list|foreword).*', re.I, default=None):
+                    #Examples: 180, 186
+                    continue
                 link = publication.find('a').get('href')
                 editors = []
                 editors_tag = None
