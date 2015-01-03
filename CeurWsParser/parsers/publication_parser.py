@@ -67,6 +67,8 @@ class PublicationParser(Parser):
                 triples.append((agent, RDF.type, FOAF.Agent))
                 triples.append((agent, FOAF.name, Literal(editor, datatype=XSD.string)))
                 triples.append((resource, DC.creator, agent))
+                triples.append((resource, FOAF.maker, agent))
+                triples.append((agent, FOAF.made, resource))
             if 'presentedAt' in publication and len(publication['presentedAt']) > 0:
                 for w in publication['presentedAt']:
                     triples.append((resource, BIBO.presentedAt, w))

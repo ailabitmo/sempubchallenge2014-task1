@@ -64,7 +64,8 @@ class ProceedingsSummaryParser(Parser):
                 triples.append((agent, RDF.type, FOAF.Agent))
                 triples.append((agent, FOAF.name, Literal(editor, datatype=XSD.string)))
                 triples.append((resource, SWRC.editor, agent))
-                triples.append((resource, DC.creator, agent))
+                triples.append((resource, FOAF.maker, agent))
+                triples.append((agent, FOAF.made, resource))
 
         self.write_triples(triples)
 
